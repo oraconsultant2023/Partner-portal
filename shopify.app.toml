@@ -2,7 +2,7 @@
 
 client_id = "afe4886866053b3edd9bb758ffc5104e"
 name = "partner-portal"
-application_url = "https://example.com"
+application_url = "https://brand-app-portal.onrender.com"
 embedded = true
 
 [build]
@@ -25,7 +25,10 @@ api_version = "2026-07"
 scopes = "write_products,write_metaobjects,write_metaobject_definitions"
 
 [auth]
-redirect_urls = [ "https://example.com/api/auth" ]
+redirect_urls = [
+  "https://brand-app-portal.onrender.com/auth/callback",
+  "https://brand-app-portal.onrender.com/auth/shopify/callback"
+]
 
 [app_proxy]
 url = "https://corrected-belly-safe-step.trycloudflare.com"
