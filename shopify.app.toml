@@ -30,7 +30,7 @@ redirect_urls = [
 ]
 
 [app_proxy]
-url = "https://corrected-belly-safe-step.trycloudflare.com"
+url = "https://partner-portal-ten-livid.vercel.app"
 subpath = "partner-portal"
 prefix = "apps"
 
