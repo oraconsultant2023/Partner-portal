@@ -2,7 +2,7 @@
 
 client_id = "afe4886866053b3edd9bb758ffc5104e"
 name = "partner-portal"
-application_url = "https://partner-portal.vercel.app"
+application_url = "https://partner-portal-ten-livid.vercel.app/"
 embedded = true
 
 [build]
@@ -25,8 +25,8 @@ scopes = "write_products,write_metaobjects,write_metaobject_definitions"
 
 [auth]
 redirect_urls = [
-  "https://partner-portal.vercel.app/auth/callback",
-  "https://partner-portal.vercel.app/auth/shopify/callback"
+  "https://partner-portal-ten-livid.vercel.app/auth/callback",
+  "https://partner-portal-ten-livid.vercel.app/auth/shopify/callback"
 ]
 
 [app_proxy]
