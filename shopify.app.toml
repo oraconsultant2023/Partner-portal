@@ -1,7 +1,7 @@
 # Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
 
 client_id = "afe4886866053b3edd9bb758ffc5104e"
-application_url = "https://example.com"
+application_url = "https://brand-app-portal.onrender.com"
 embedded = true
 name = "partner-portal"
 
@@ -45,7 +45,10 @@ api_version = "2026-07"
   topics = [ "app/scopes_update" ]
 
 [auth]
-redirect_urls = [ "https://example.com/api/auth" ]
+redirect_urls = [
+  "https://brand-app-portal.onrender.com/auth/callback",
+  "https://brand-app-portal.onrender.com/auth/shopify/callback"
+]
 
 [build]
 include_config_on_deploy = true
