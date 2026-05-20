@@ -2,12 +2,11 @@
 
 client_id = "afe4886866053b3edd9bb758ffc5104e"
 name = "partner-portal"
-application_url = "https://brand-app-portal.onrender.com"
+application_url = "https://partner-portal.vercel.app"
 embedded = true
 
 [build]
 automatically_update_urls_on_dev = true
-include_config_on_deploy = true
 
 [webhooks]
 api_version = "2026-07"
@@ -26,8 +25,8 @@ scopes = "write_products,write_metaobjects,write_metaobject_definitions"
 
 [auth]
 redirect_urls = [
-  "https://brand-app-portal.onrender.com/auth/callback",
-  "https://brand-app-portal.onrender.com/auth/shopify/callback"
+  "https://partner-portal.vercel.app/auth/callback",
+  "https://partner-portal.vercel.app/auth/shopify/callback"
 ]
 
 [app_proxy]
