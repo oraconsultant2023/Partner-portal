@@ -1,13 +1,36 @@
 # Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
 
 client_id = "afe4886866053b3edd9bb758ffc5104e"
-application_url = "https://brand-app-portal.onrender.com"
-embedded = true
 name = "partner-portal"
+application_url = "https://example.com"
+embedded = true
+
+[build]
+automatically_update_urls_on_dev = true
+include_config_on_deploy = true
+
+[webhooks]
+api_version = "2026-07"
+
+  [[webhooks.subscriptions]]
+  uri = "/webhooks/app/scopes_update"
+  topics = [ "app/scopes_update" ]
+
+  [[webhooks.subscriptions]]
+  uri = "/webhooks/app/uninstalled"
+  topics = [ "app/uninstalled" ]
 
 [access_scopes]
 # Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
 scopes = "write_products,write_metaobjects,write_metaobject_definitions"
+
+[auth]
+redirect_urls = [ "https://example.com/api/auth" ]
+
+[app_proxy]
+url = "https://corrected-belly-safe-step.trycloudflare.com"
+subpath = "partner-portal"
+prefix = "apps"
 
 [product.metafields.app.demo_info]
 type = "single_line_text_field"
@@ -32,29 +55,3 @@ required = true
 [metaobjects.app.example.fields.description]
 name = "Description"
 type = "multi_line_text_field"
-
-[webhooks]
-api_version = "2026-07"
-
-  [[webhooks.subscriptions]]
-  uri = "/webhooks/app/uninstalled"
-  topics = [ "app/uninstalled" ]
-
-  [[webhooks.subscriptions]]
-  uri = "/webhooks/app/scopes_update"
-  topics = [ "app/scopes_update" ]
-
-[auth]
-redirect_urls = [
-  "https://brand-app-portal.onrender.com/auth/callback",
-  "https://brand-app-portal.onrender.com/auth/shopify/callback"
-]
-
-[build]
-include_config_on_deploy = true
-automatically_update_urls_on_dev = true
-
-[app_proxy]
-url = "https://corrected-belly-safe-step.trycloudflare.com"
-subpath = "partner-portal"
-prefix = "apps"
