@@ -36,6 +36,33 @@ export async function loader({ request }: any) {
     JSON.stringify(result, null, 2)
   );
 
-  return json(result);
+  const applications = result.data.metaobjects.edges.map((edge: any) => {
+
+  const fields: any = {};
+
+  edge.node.fields.forEach((field: any) => {
+    fields[field.key] = field.value;
+  });
+
+  return {
+    id: edge.node.id,
+    handle: edge.node.handle,
+
+    publish_status:
+      edge.node.capabilities.publishable.status,
+
+    brand_name: fields.brand_name || "",
+    website: fields.website || "",
+    contact_name: fields.contact_name || "",
+    email: fields.email || "",
+    category: fields.category || "",
+    placements: fields.placements || "",
+    affiliate_program: fields.affiliate_program || "",
+    status: fields.status || "pending"
+  };
+
+});
+
+return json(applications);
 
 }
