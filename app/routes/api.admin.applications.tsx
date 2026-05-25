@@ -6,42 +6,30 @@ export async function loader({ request }: any) {
   const { admin } = await authenticate.admin(request);
 
   const response = await admin.graphql(`
-    query GetApplications {
-      metaobjects(type: "brand_application", first: 50) {
+    query {
+
+      metaobjectDefinitions(first: 20) {
+
         edges {
+
           node {
-            id
-            handle
-            fields {
-              key
-              value
-            }
+
+            name
+            type
+
           }
+
         }
+
       }
+
     }
   `);
 
   const data = await response.json();
 
-  const applications = data.data.metaobjects.edges.map((edge: any) => {
+  console.log(JSON.stringify(data, null, 2));
 
-    const fields: any = {};
+  return json(data);
 
-    edge.node.fields.forEach((field: any) => {
-      fields[field.key] = field.value;
-    });
-
-    return {
-      id: edge.node.id,
-      handle: edge.node.handle,
-      brand_name: fields.brand_name || "",
-      email: fields.email || "",
-      category: fields.category || "",
-      status: fields.status || "pending"
-    };
-
-  });
-
-  return json(applications);
 }
