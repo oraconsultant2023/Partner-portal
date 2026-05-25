@@ -1,7 +1,7 @@
 import { json } from "@remix-run/node";
+import { authenticate } from "../shopify.server";
 
 const corsHeaders = {
-
   "Access-Control-Allow-Origin":
     "https://gimmethegoodstuff.org",
 
@@ -9,21 +9,22 @@ const corsHeaders = {
     "POST, OPTIONS",
 
   "Access-Control-Allow-Headers":
-    "Content-Type, x-admin-secret"
-
+    "Content-Type, x-admin-secret",
 };
 
 // HANDLE PREFLIGHT
 export async function loader() {
-
   return new Response(null, {
     status: 204,
-    headers: corsHeaders
+    headers: corsHeaders,
   });
-
 }
 
 export async function action({ request }: any) {
+
+  // SHOPIFY AUTH
+  const { admin } =
+    await authenticate.admin(request);
 
   try {
 
@@ -41,7 +42,7 @@ export async function action({ request }: any) {
         { error: "Unauthorized" },
         {
           status: 401,
-          headers: corsHeaders
+          headers: corsHeaders,
         }
       );
 
@@ -55,78 +56,60 @@ export async function action({ request }: any) {
       id,
       email,
       contact_name,
-      brand_name
+      brand_name,
     } = body;
 
     // -----------------------------------
     // 1. UPDATE METAOBJECT STATUS
     // -----------------------------------
 
-    const updateResponse = await fetch(
-      `https://${process.env.SHOPIFY_STORE_DOMAIN}/admin/api/2026-04/graphql.json`,
-      {
-        method: "POST",
+    const updateResponse =
+      await admin.graphql(`
 
-        headers: {
-          "Content-Type":
-            "application/json",
+        mutation updateMetaobject(
+          $id: ID!,
+          $metaobject: MetaobjectUpdateInput!
+        ) {
 
-          "X-Shopify-Access-Token":
-            process.env.SHOPIFY_ADMIN_TOKEN!
-        },
+          metaobjectUpdate(
+            id: $id,
+            metaobject: $metaobject
+          ) {
 
-        body: JSON.stringify({
-
-          query: `
-
-            mutation updateMetaobject(
-              $id: ID!,
-              $metaobject: MetaobjectUpdateInput!
-            ) {
-
-              metaobjectUpdate(
-                id: $id,
-                metaobject: $metaobject
-              ) {
-
-                metaobject {
-                  id
-                }
-
-                userErrors {
-                  field
-                  message
-                }
-
-              }
-
+            metaobject {
+              id
             }
 
-          `,
-
-          variables: {
-
-            id,
-
-            metaobject: {
-
-              fields: [
-
-                {
-                  key: "status",
-                  value: "approved"
-                }
-
-              ]
-
+            userErrors {
+              field
+              message
             }
 
           }
 
-        })
+        }
 
-      }
-    );
+      `,
+      {
+        variables: {
+
+          id,
+
+          metaobject: {
+
+            fields: [
+
+              {
+                key: "status",
+                value: "approved"
+              }
+
+            ]
+
+          }
+
+        }
+      });
 
     const updateResult =
       await updateResponse.json();
@@ -145,70 +128,54 @@ export async function action({ request }: any) {
     // -----------------------------------
 
     const customerResponse =
-      await fetch(
-        `https://${process.env.SHOPIFY_STORE_DOMAIN}/admin/api/2026-04/graphql.json`,
-        {
-          method: "POST",
+      await admin.graphql(`
 
-          headers: {
-            "Content-Type":
-              "application/json",
+        mutation customerCreate(
+          $input: CustomerInput!
+        ) {
 
-            "X-Shopify-Access-Token":
-              process.env.SHOPIFY_ADMIN_TOKEN!
-          },
+          customerCreate(
+            input: $input
+          ) {
 
-          body: JSON.stringify({
+            customer {
 
-            query: `
-
-              mutation customerCreate(
-                $input: CustomerInput!
-              ) {
-
-                customerCreate(
-                  input: $input
-                ) {
-
-                  customer {
-
-                    id
-                    email
-
-                  }
-
-                  userErrors {
-                    field
-                    message
-                  }
-
-                }
-
-              }
-
-            `,
-
-            variables: {
-
-              input: {
-
-                firstName:
-                  contact_name || brand_name,
-
-                email,
-
-                tags: [
-                  "partner"
-                ]
-
-              }
+              id
+              email
 
             }
 
-          })
+            userErrors {
+              field
+              message
+            }
+
+          }
 
         }
-      );
+
+      `,
+      {
+        variables: {
+
+          input: {
+
+            firstName:
+              contact_name || brand_name,
+
+            lastName:
+              "Partner",
+
+            email,
+
+            tags: [
+              "partner"
+            ]
+
+          }
+
+        }
+      });
 
     const customerResult =
       await customerResponse.json();
