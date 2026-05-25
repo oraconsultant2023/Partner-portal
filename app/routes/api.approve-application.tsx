@@ -36,65 +36,84 @@ export async function action({ request }: any) {
     // 1. UPDATE METAOBJECT STATUS
     // -----------------------------
 
-    await fetch(
-      `https://${process.env.SHOPIFY_STORE_DOMAIN}/admin/api/2026-04/graphql.json`,
-      {
-        method: "POST",
+    
+const updateResponse = await fetch(
+  `https://${process.env.SHOPIFY_STORE_DOMAIN}/admin/api/2026-04/graphql.json`,
+  {
+    method: "POST",
 
-        headers: {
-          "Content-Type":
-            "application/json",
+    headers: {
+      "Content-Type":
+        "application/json",
 
-          "X-Shopify-Access-Token":
-            process.env.SHOPIFY_ADMIN_TOKEN!
-        },
+      "X-Shopify-Access-Token":
+        process.env.SHOPIFY_ADMIN_TOKEN!
+    },
 
-        body: JSON.stringify({
+    body: JSON.stringify({
 
-          query: `
+      query: `
 
-            mutation UpdateApplication($id: ID!) {
+        mutation updateMetaobject(
+          $id: ID!,
+          $metaobject: MetaobjectUpdateInput!
+        ) {
 
-              metaobjectUpdate(
+          metaobjectUpdate(
+            id: $id,
+            metaobject: $metaobject
+          ) {
 
-                id: $id,
-
-                metaobject: {
-
-                  fields: [
-                    {
-                      key: "status",
-                      value: "approved"
-                    }
-                  ]
-
-                }
-
-              ) {
-
-                metaobject {
-                  id
-                }
-
-                userErrors {
-                  field
-                  message
-                }
-
-              }
-
+            metaobject {
+              id
             }
 
-          `,
+            userErrors {
+              field
+              message
+            }
 
-          variables: {
-            id
           }
 
-        })
+        }
+
+      `,
+
+      variables: {
+
+        id,
+
+        metaobject: {
+
+          fields: [
+
+            {
+              key: "status",
+              value: "approved"
+            }
+
+          ]
+
+        }
 
       }
-    );
+
+    })
+
+  }
+);
+
+const updateResult =
+  await updateResponse.json();
+
+console.log(
+  "UPDATE RESULT:",
+  JSON.stringify(
+    updateResult,
+    null,
+    2
+  )
+);
 
     // -----------------------------
     // 2. CREATE CUSTOMER
