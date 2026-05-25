@@ -1,22 +1,66 @@
 import { json } from "@remix-run/node";
 
-export async function action({ request }: any) {
-  try {
-    // SECRET CHECK
-    const key = request.headers.get("x-admin-secret");
+const corsHeaders = {
 
-    if (key !== process.env.ADMIN_API_SECRET) {
-      return json({ error: "Unauthorized" }, { status: 401 });
+  "Access-Control-Allow-Origin":
+    "https://gimmethegoodstuff.org",
+
+  "Access-Control-Allow-Methods":
+    "POST, OPTIONS",
+
+  "Access-Control-Allow-Headers":
+    "Content-Type, x-admin-secret"
+
+};
+
+// HANDLE PREFLIGHT
+export async function loader() {
+
+  return new Response(null, {
+    status: 204,
+    headers: corsHeaders
+  });
+
+}
+
+export async function action({ request }: any) {
+
+  try {
+
+    // SECRET CHECK
+    const key =
+      request.headers.get(
+        "x-admin-secret"
+      );
+
+    if (
+      key !== process.env.ADMIN_API_SECRET
+    ) {
+
+      return json(
+        { error: "Unauthorized" },
+        {
+          status: 401,
+          headers: corsHeaders
+        }
+      );
+
     }
 
     // BODY
-    const body = await request.json();
+    const body =
+      await request.json();
 
-    const { id, email, contact_name, brand_name } = body;
+    const {
+      id,
+      email,
+      contact_name,
+      brand_name
+    } = body;
 
-    // -----------------------------
+    // -----------------------------------
     // 1. UPDATE METAOBJECT STATUS
-    // -----------------------------
+    // -----------------------------------
 
     const updateResponse = await fetch(
       `https://${process.env.SHOPIFY_STORE_DOMAIN}/admin/api/2026-04/graphql.json`,
@@ -24,76 +68,99 @@ export async function action({ request }: any) {
         method: "POST",
 
         headers: {
-          "Content-Type": "application/json",
+          "Content-Type":
+            "application/json",
 
-          "X-Shopify-Access-Token": process.env.SHOPIFY_ADMIN_TOKEN!,
+          "X-Shopify-Access-Token":
+            process.env.SHOPIFY_ADMIN_TOKEN!
         },
 
         body: JSON.stringify({
+
           query: `
 
-        mutation updateMetaobject(
-          $id: ID!,
-          $metaobject: MetaobjectUpdateInput!
-        ) {
+            mutation updateMetaobject(
+              $id: ID!,
+              $metaobject: MetaobjectUpdateInput!
+            ) {
 
-          metaobjectUpdate(
-            id: $id,
-            metaobject: $metaobject
-          ) {
+              metaobjectUpdate(
+                id: $id,
+                metaobject: $metaobject
+              ) {
 
-            metaobject {
-              id
+                metaobject {
+                  id
+                }
+
+                userErrors {
+                  field
+                  message
+                }
+
+              }
+
             }
 
-            userErrors {
-              field
-              message
+          `,
+
+          variables: {
+
+            id,
+
+            metaobject: {
+
+              fields: [
+
+                {
+                  key: "status",
+                  value: "approved"
+                }
+
+              ]
+
             }
 
           }
 
-        }
+        })
 
-      `,
-
-          variables: {
-            id,
-
-            metaobject: {
-              fields: [
-                {
-                  key: "status",
-                  value: "approved",
-                },
-              ],
-            },
-          },
-        }),
-      },
+      }
     );
 
-    const updateResult = await updateResponse.json();
+    const updateResult =
+      await updateResponse.json();
 
-    console.log("UPDATE RESULT:", JSON.stringify(updateResult, null, 2));
+    console.log(
+      "FULL UPDATE RESULT:",
+      JSON.stringify(
+        updateResult,
+        null,
+        2
+      )
+    );
 
-    // -----------------------------
+    // -----------------------------------
     // 2. CREATE CUSTOMER
-    // -----------------------------
+    // -----------------------------------
 
-    const customerResponse = await fetch(
-      `https://${process.env.SHOPIFY_STORE_DOMAIN}/admin/api/2026-04/graphql.json`,
-      {
-        method: "POST",
+    const customerResponse =
+      await fetch(
+        `https://${process.env.SHOPIFY_STORE_DOMAIN}/admin/api/2026-04/graphql.json`,
+        {
+          method: "POST",
 
-        headers: {
-          "Content-Type": "application/json",
+          headers: {
+            "Content-Type":
+              "application/json",
 
-          "X-Shopify-Access-Token": process.env.SHOPIFY_ADMIN_TOKEN!,
-        },
+            "X-Shopify-Access-Token":
+              process.env.SHOPIFY_ADMIN_TOKEN!
+          },
 
-        body: JSON.stringify({
-          query: `
+          body: JSON.stringify({
+
+            query: `
 
               mutation customerCreate(
                 $input: CustomerInput!
@@ -121,72 +188,112 @@ export async function action({ request }: any) {
 
             `,
 
-          variables: {
-            input: {
-              firstName: contact_name,
+            variables: {
 
-              email,
+              input: {
 
-              tags: ["partner"],
-            },
-          },
-        }),
-      },
-    );
+                firstName:
+                  contact_name || brand_name,
 
-    const customerResult = await customerResponse.json();
+                email,
+
+                tags: [
+                  "partner"
+                ]
+
+              }
+
+            }
+
+          })
+
+        }
+      );
+
+    const customerResult =
+      await customerResponse.json();
 
     console.log(
       "FULL CUSTOMER RESULT:",
-      JSON.stringify(customerResult, null, 2),
+      JSON.stringify(
+        customerResult,
+        null,
+        2
+      )
     );
 
-    console.log("FULL UPDATE RESULT:", JSON.stringify(updateResult, null, 2));
+    // -----------------------------------
+    // 3. CHECK ERRORS
+    // -----------------------------------
 
-   const updateErrors =
-  updateResult?.data
-    ?.metaobjectUpdate
-    ?.userErrors || [];
+    const updateErrors =
+      updateResult?.data
+        ?.metaobjectUpdate
+        ?.userErrors || [];
 
-const customerErrors =
-  customerResult?.data
-    ?.customerCreate
-    ?.userErrors || [];
+    const customerErrors =
+      customerResult?.data
+        ?.customerCreate
+        ?.userErrors || [];
 
-if (
-  updateErrors.length ||
-  customerErrors.length
-) {
+    if (
+      updateErrors.length ||
+      customerErrors.length
+    ) {
 
-  return json({
+      return json(
+        {
 
-    success: false,
+          success: false,
 
-    updateErrors,
-    customerErrors
+          updateErrors,
 
-  });
+          customerErrors
 
-}
+        },
+        {
+          headers: corsHeaders
+        }
+      );
 
-return json({
+    }
 
-  success: true,
+    // -----------------------------------
+    // SUCCESS
+    // -----------------------------------
 
-  message:
-    "Application approved"
+    return json(
+      {
 
-});
+        success: true,
 
-  } catch (error: any) {
-    console.log("APPROVE ERROR:", error);
+        message:
+          "Application approved"
+
+      },
+      {
+        headers: corsHeaders
+      }
+    );
+
+  } catch(error: any) {
+
+    console.log(
+      "APPROVE ERROR:",
+      error
+    );
 
     return json(
       {
         success: false,
-        error: error.message,
+        error: error.message
       },
-      { status: 500 },
+      {
+        status: 500,
+        headers: corsHeaders
+      }
     );
+
   }
+
 }
