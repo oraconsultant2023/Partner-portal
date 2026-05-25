@@ -21,44 +21,57 @@ export async function loader({ request }: any) {
   }
 
   // SHOPIFY AUTH
-  const { admin } =
-    await authenticate.admin(request);
+const response = await fetch(
+  `https://${process.env.SHOPIFY_STORE_DOMAIN}/admin/api/2026-04/graphql.json`,
+  {
+    method: "POST",
 
-  // GRAPHQL QUERY
-  const response = await admin.graphql(`
-    query {
+    headers: {
+      "Content-Type": "application/json",
 
-      metaobjects(
-        type: "brand_application",
-        first: 50
-      ) {
+      "X-Shopify-Access-Token":
+        process.env.SHOPIFY_ADMIN_TOKEN!,
+    },
 
-        edges {
+    body: JSON.stringify({
+      query: `
+        query {
 
-          node {
+          metaobjects(
+            type: "brand_application",
+            first: 50
+          ) {
 
-            id
-            handle
+            edges {
 
-            capabilities {
-              publishable {
-                status
+              node {
+
+                id
+                handle
+
+                capabilities {
+                  publishable {
+                    status
+                  }
+                }
+
+                fields {
+                  key
+                  value
+                }
+
               }
-            }
 
-            fields {
-              key
-              value
             }
 
           }
 
         }
+      `
+    })
 
-      }
-
-    }
-  `);
+  }
+);
 
   const result = await response.json();
 
