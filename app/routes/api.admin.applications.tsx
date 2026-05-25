@@ -3,34 +3,29 @@ import { authenticate } from "../shopify.server";
 
 export async function loader({ request }: any) {
 
-  const { admin } = await authenticate.public.appProxy(request);
+  const { admin } = await authenticate.admin(request);
 
   const response = await admin.graphql(`
     query {
-
-      metaobjectDefinitions(first: 20) {
-
+      metaobjects(first: 50, type: "brand_application") {
         edges {
-
           node {
+            id
+            handle
 
-            name
-            type
-
+            fields {
+              key
+              value
+            }
           }
-
         }
-
       }
-
     }
   `);
 
-  const data = await response.json();
+  const result = await response.json();
 
-  console.log("METAOBJECT DEFINITIONS:");
-  console.log(JSON.stringify(data, null, 2));
+  console.log("APPLICATIONS:", JSON.stringify(result, null, 2));
 
-  return json(data);
-
+  return json(result);
 }
