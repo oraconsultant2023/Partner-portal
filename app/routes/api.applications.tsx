@@ -49,7 +49,7 @@ export async function loader({ request }: any) {
     handle: edge.node.handle,
 
     publish_status:
-      edge.node.capabilities.publishable.status,
+edge.node.capabilities?.publishable?.status || "ACTIVE",
 
     brand_name: fields.brand_name || "",
     website: fields.website || "",
