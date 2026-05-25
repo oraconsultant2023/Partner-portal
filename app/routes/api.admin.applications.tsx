@@ -3,7 +3,7 @@ import { authenticate } from "../shopify.server";
 
 export async function loader({ request }: any) {
 
-  const { admin } = await authenticate.admin(request);
+  const { admin } = await authenticate.public.appProxy(request);
 
   const response = await admin.graphql(`
     query {
