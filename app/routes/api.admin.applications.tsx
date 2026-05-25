@@ -28,6 +28,7 @@ export async function loader({ request }: any) {
 
   const data = await response.json();
 
+  console.log("METAOBJECT DEFINITIONS:");
   console.log(JSON.stringify(data, null, 2));
 
   return json(data);
