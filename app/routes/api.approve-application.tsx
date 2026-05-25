@@ -1,58 +1,36 @@
 import { json } from "@remix-run/node";
 
 export async function action({ request }: any) {
-
   try {
-
     // SECRET CHECK
-    const key =
-      request.headers.get(
-        "x-admin-secret"
-      );
+    const key = request.headers.get("x-admin-secret");
 
-    if (
-      key !== process.env.ADMIN_API_SECRET
-    ) {
-
-      return json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
-
+    if (key !== process.env.ADMIN_API_SECRET) {
+      return json({ error: "Unauthorized" }, { status: 401 });
     }
 
     // BODY
-    const body =
-      await request.json();
+    const body = await request.json();
 
-    const {
-      id,
-      email,
-      contact_name,
-      brand_name
-    } = body;
+    const { id, email, contact_name, brand_name } = body;
 
     // -----------------------------
     // 1. UPDATE METAOBJECT STATUS
     // -----------------------------
 
-    
-const updateResponse = await fetch(
-  `https://${process.env.SHOPIFY_STORE_DOMAIN}/admin/api/2026-04/graphql.json`,
-  {
-    method: "POST",
+    const updateResponse = await fetch(
+      `https://${process.env.SHOPIFY_STORE_DOMAIN}/admin/api/2026-04/graphql.json`,
+      {
+        method: "POST",
 
-    headers: {
-      "Content-Type":
-        "application/json",
+        headers: {
+          "Content-Type": "application/json",
 
-      "X-Shopify-Access-Token":
-        process.env.SHOPIFY_ADMIN_TOKEN!
-    },
+          "X-Shopify-Access-Token": process.env.SHOPIFY_ADMIN_TOKEN!,
+        },
 
-    body: JSON.stringify({
-
-      query: `
+        body: JSON.stringify({
+          query: `
 
         mutation updateMetaobject(
           $id: ID!,
@@ -79,63 +57,43 @@ const updateResponse = await fetch(
 
       `,
 
-      variables: {
+          variables: {
+            id,
 
-        id,
+            metaobject: {
+              fields: [
+                {
+                  key: "status",
+                  value: "approved",
+                },
+              ],
+            },
+          },
+        }),
+      },
+    );
 
-        metaobject: {
+    const updateResult = await updateResponse.json();
 
-          fields: [
-
-            {
-              key: "status",
-              value: "approved"
-            }
-
-          ]
-
-        }
-
-      }
-
-    })
-
-  }
-);
-
-const updateResult =
-  await updateResponse.json();
-
-console.log(
-  "UPDATE RESULT:",
-  JSON.stringify(
-    updateResult,
-    null,
-    2
-  )
-);
+    console.log("UPDATE RESULT:", JSON.stringify(updateResult, null, 2));
 
     // -----------------------------
     // 2. CREATE CUSTOMER
     // -----------------------------
 
-    const customerResponse =
-      await fetch(
-        `https://${process.env.SHOPIFY_STORE_DOMAIN}/admin/api/2026-04/graphql.json`,
-        {
-          method: "POST",
+    const customerResponse = await fetch(
+      `https://${process.env.SHOPIFY_STORE_DOMAIN}/admin/api/2026-04/graphql.json`,
+      {
+        method: "POST",
 
-          headers: {
-            "Content-Type":
-              "application/json",
+        headers: {
+          "Content-Type": "application/json",
 
-            "X-Shopify-Access-Token":
-              process.env.SHOPIFY_ADMIN_TOKEN!
-          },
+          "X-Shopify-Access-Token": process.env.SHOPIFY_ADMIN_TOKEN!,
+        },
 
-          body: JSON.stringify({
-
-            query: `
+        body: JSON.stringify({
+          query: `
 
               mutation customerCreate(
                 $input: CustomerInput!
@@ -163,64 +121,72 @@ console.log(
 
             `,
 
-            variables: {
+          variables: {
+            input: {
+              firstName: contact_name,
 
-              input: {
+              email,
 
-                firstName:
-                  contact_name,
-
-                email,
-
-                tags: [
-                  "partner"
-                ]
-
-              }
-
-            }
-
-          })
-
-        }
-      );
-
-    const customerResult =
-      await customerResponse.json();
-
-    console.log(
-      "CUSTOMER RESULT:",
-      JSON.stringify(
-        customerResult,
-        null,
-        2
-      )
+              tags: ["partner"],
+            },
+          },
+        }),
+      },
     );
 
-    return json({
-
-      success: true,
-
-      message:
-        "Application approved"
-
-    });
-
-  } catch(error: any) {
+    const customerResult = await customerResponse.json();
 
     console.log(
-      "APPROVE ERROR:",
-      error
+      "FULL CUSTOMER RESULT:",
+      JSON.stringify(customerResult, null, 2),
     );
+
+    console.log("FULL UPDATE RESULT:", JSON.stringify(updateResult, null, 2));
+
+   const updateErrors =
+  updateResult?.data
+    ?.metaobjectUpdate
+    ?.userErrors || [];
+
+const customerErrors =
+  customerResult?.data
+    ?.customerCreate
+    ?.userErrors || [];
+
+if (
+  updateErrors.length ||
+  customerErrors.length
+) {
+
+  return json({
+
+    success: false,
+
+    updateErrors,
+    customerErrors
+
+  });
+
+}
+
+return json({
+
+  success: true,
+
+  message:
+    "Application approved"
+
+});
+
+  } catch (error: any) {
+    console.log("APPROVE ERROR:", error);
 
     return json(
       {
         success: false,
-        error: error.message
+        error: error.message,
       },
-      { status: 500 }
+      { status: 500 },
     );
-
   }
-
 }
