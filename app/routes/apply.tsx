@@ -1,5 +1,34 @@
 import { json } from "@remix-run/node";
 import shopify from "../shopify.server";
+import { json } from "@remix-run/node";
+export async function loader({ request }: any) {
+
+  const { admin } = await authenticate.admin(request);
+
+  const response = await admin.graphql(`
+    query GetApplications {
+      metaobjects(type: "brand_application", first: 50) {
+        edges {
+          node {
+            id
+            handle
+            fields {
+              key
+              value
+            }
+          }
+        }
+      }
+    }
+  `);
+
+  const data = await response.json();
+
+  return json(data);
+}
+
+
+
 
 export async function action({ request }: any) {
   try {
