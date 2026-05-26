@@ -6,13 +6,22 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "Content-Type, x-admin-secret",
 };
 
+// 1. THIS CATCHES THE BROWSER's PREFLIGHT (OPTIONS)
+export async function loader({ request }: any) {
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: corsHeaders });
+  }
+  return json({ error: "Method not allowed" }, { status: 405, headers: corsHeaders });
+}
+
+// 2. THIS CATCHES THE ACTUAL FORM SUBMISSION (POST)
 export async function action({ request }: any) {
-  // 1. CATCH OPTIONS PREFLIGHT (Remix style)
+  // Catch OPTIONS here as well, just as a safety net
   if (request.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: corsHeaders });
   }
 
-  // 2. SECRET CHECK (Must happen first!)
+  // SECRET CHECK
   const key = request.headers.get("x-admin-secret");
   if (key !== process.env.ADMIN_API_SECRET) {
     return json({ error: "Unauthorized" }, { status: 401, headers: corsHeaders });
@@ -22,7 +31,7 @@ export async function action({ request }: any) {
     const body = await request.json();
     const { id, email, contact_name, brand_name } = body;
 
-    // 3. UPDATE METAOBJECT (Manual Fetch bypasses the redirect loop)
+    // UPDATE METAOBJECT (Manual Fetch)
     const updateResponse = await fetch(
       `https://${process.env.SHOPIFY_STORE_DOMAIN}/admin/api/2026-04/graphql.json`,
       {
@@ -51,7 +60,7 @@ export async function action({ request }: any) {
 
     const updateResult = await updateResponse.json();
 
-    // 4. CREATE CUSTOMER (Manual Fetch)
+    // CREATE CUSTOMER (Manual Fetch)
     const customerResponse = await fetch(
       `https://${process.env.SHOPIFY_STORE_DOMAIN}/admin/api/2026-04/graphql.json`,
       {
@@ -82,7 +91,7 @@ export async function action({ request }: any) {
 
     const customerResult = await customerResponse.json();
 
-    // 5. CHECK ERRORS
+    // CHECK ERRORS
     const updateErrors = updateResult?.data?.metaobjectUpdate?.userErrors || [];
     const customerErrors = customerResult?.data?.customerCreate?.userErrors || [];
 
@@ -94,7 +103,7 @@ export async function action({ request }: any) {
       );
     }
 
-    // 6. SUCCESS
+    // SUCCESS
     return json(
       { success: true, message: "Application approved" },
       { headers: corsHeaders }
