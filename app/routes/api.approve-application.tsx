@@ -12,19 +12,19 @@ const corsHeaders = {
     "Content-Type, x-admin-secret",
 };
 
-export async function options() {
+export async function loader() {
 
   return new Response(null, {
-    status: 204,
+    status: 200,
     headers: corsHeaders
   });
 
 }
 
-export async function loader() {
+export async function options() {
 
   return new Response(null, {
-    status: 204,
+    status: 200,
     headers: corsHeaders
   });
 
