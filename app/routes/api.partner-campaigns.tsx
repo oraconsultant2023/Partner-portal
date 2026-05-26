@@ -120,33 +120,42 @@ export async function loader({
       )
     );
 
+    console.log(
+  "RAW RESPONSE STATUS:",
+  response.status
+);
+
+console.log(
+  "RAW GRAPHQL RESULT:",
+  JSON.stringify(
+    result,
+    null,
+    2
+  )
+);
+
     // FORMAT DATA
-    const campaigns =
-      result.data.metaobjects.edges
-        .map((edge: any) => {
+    
 
-          const fields: any = {};
 
-          edge.node.fields.forEach(
-            (field: any) => {
+    if (
+  !result.data ||
+  !result.data.metaobjects
+) {
 
-              fields[field.key] =
-                field.value;
+  console.log(
+    "GRAPHQL FAILED:",
+    result
+  );
 
-            }
-          );
+  return json([]);
 
-          return {
+}
 
-            id:
-              edge.node.id,
+const campaigns =
+  result.data.metaobjects.edges
 
-            ...fields
-
-          };
-
-        });
-
+  
     // FILTER CAMPAIGNS
     const filteredCampaigns =
       campaigns.filter(
