@@ -12,14 +12,14 @@ const corsHeaders = {
     "Content-Type, x-admin-secret",
 };
 
-// HANDLE PREFLIGHT
-export async function loader() {
+export async function options() {
+
   return new Response(null, {
     status: 204,
-    headers: corsHeaders,
+    headers: corsHeaders
   });
-}
 
+}
 export async function action({ request }: any) {
 
   // SHOPIFY AUTH
