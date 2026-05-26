@@ -1,5 +1,5 @@
 import { json } from "@remix-run/node";
-import { shopify }
+import shopify 
 from "../shopify.server";
 
 const corsHeaders = {
