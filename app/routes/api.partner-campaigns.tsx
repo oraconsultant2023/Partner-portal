@@ -30,6 +30,7 @@ export async function loader({
     const category =
       url.searchParams.get("category");
 
+    // GET SESSION
     const sessions =
       await shopify.sessionStorage
         .findSessionsByShop(
@@ -39,11 +40,13 @@ export async function loader({
     const session =
       sessions[0];
 
+    // GRAPHQL CLIENT
     const client =
       new shopify.api.clients.Graphql({
         session
       });
 
+    // QUERY METAOBJECTS
     const response =
       await client.query({
 
@@ -63,6 +66,7 @@ export async function loader({
                   node {
 
                     id
+                    handle
 
                     fields {
 
@@ -85,29 +89,77 @@ export async function loader({
 
       });
 
+    const result =
+      response.body;
+
+    console.log(
+      "CAMPAIGNS:",
+      JSON.stringify(
+        result,
+        null,
+        2
+      )
+    );
+
     const campaigns =
-      response.body.data
-        .metaobjects.edges
+      result.data
+        .metaobjects
+        .edges
         .map((edge: any) => {
 
-          const fields =
-            edge.node.fields
-              .reduce(
-                (
-                  acc: any,
-                  field: any
-                ) => {
+          const fields: any = {};
 
-                  acc[field.key] =
-                    field.value;
+          edge.node.fields.forEach(
+            (field: any) => {
 
-                  return acc;
+              fields[field.key] =
+                field.value;
 
-                },
-                {}
-              );
+            }
+          );
 
-          return fields;
+          return {
+
+            id:
+              edge.node.id,
+
+            handle:
+              edge.node.handle,
+
+            campaign_name:
+              fields.campaign_name || "",
+
+            campaign_type:
+              fields.campaign_type || "",
+
+            target_category:
+              fields.target_category || "",
+
+            partner_email:
+              fields.partner_email || "",
+
+            campaign_summary:
+              fields.campaign_summary || "",
+
+            budget:
+              fields.budget || "",
+
+            requirements:
+              fields.requirements || "",
+
+            placements:
+              fields.placements || "",
+
+            status:
+              fields.status || "",
+
+            start_date:
+              fields.start_date || "",
+
+            end_date:
+              fields.end_date || ""
+
+          };
 
         })
         .filter((campaign: any) => {
@@ -151,10 +203,7 @@ export async function loader({
         });
 
     return json(
-      {
-        success: true,
-        campaigns
-      },
+      campaigns,
       {
         headers: corsHeaders
       }
@@ -162,7 +211,10 @@ export async function loader({
 
   } catch(error: any) {
 
-    console.log(error);
+    console.log(
+      "CAMPAIGN ERROR:",
+      error
+    );
 
     return json(
       {
