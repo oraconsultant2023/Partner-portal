@@ -20,6 +20,15 @@ export async function options() {
   });
 
 }
+
+export async function loader() {
+
+  return new Response(null, {
+    status: 204,
+    headers: corsHeaders
+  });
+
+}
 export async function action({ request }: any) {
 
   // SHOPIFY AUTH
