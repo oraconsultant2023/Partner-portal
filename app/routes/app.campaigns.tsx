@@ -20,15 +20,92 @@ export async function loader({
       request
     );
 
+  // FETCH METAOBJECTS
+  const response =
+    await admin.graphql(`
+
+      query {
+
+        metaobjects(
+          type: "partner_campaign",
+          first: 20
+        ) {
+
+          edges {
+
+            node {
+
+              id
+              handle
+
+              fields {
+
+                key
+                value
+
+              }
+
+            }
+
+          }
+
+        }
+
+      }
+
+    `);
+
+  const result =
+    await response.json();
+
+  console.log(
+    "CAMPAIGNS:",
+    JSON.stringify(
+      result,
+      null,
+      2
+    )
+  );
+
+  // FORMAT FIELDS
+  const campaigns =
+    result.data.metaobjects.edges
+      .map((edge: any) => {
+
+        const fields: any = {};
+
+        edge.node.fields.forEach(
+          (field: any) => {
+
+            fields[field.key] =
+              field.value;
+
+          }
+        );
+
+        return {
+
+          id:
+            edge.node.id,
+
+          handle:
+            edge.node.handle,
+
+          ...fields
+
+        };
+
+      });
+
   return json({
-    success: true
+    campaigns
   });
 
 }
 
 export default function Campaigns() {
 
-  const data =
+  const { campaigns } =
     useLoaderData<any>();
 
   return (
@@ -40,13 +117,13 @@ export default function Campaigns() {
     >
 
       <h1>
-        Shopify Auth Working
+        Campaigns
       </h1>
 
       <pre>
         {
           JSON.stringify(
-            data,
+            campaigns,
             null,
             2
           )
