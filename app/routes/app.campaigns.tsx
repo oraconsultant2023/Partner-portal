@@ -1,4 +1,35 @@
+import { json }
+from "@remix-run/node";
+
+import {
+  useLoaderData
+}
+from "react-router";
+
+import {
+  authenticate
+}
+from "../shopify.server";
+
+export async function loader({
+  request
+}: any) {
+
+  const { admin } =
+    await authenticate.admin(
+      request
+    );
+
+  return json({
+    success: true
+  });
+
+}
+
 export default function Campaigns() {
+
+  const data =
+    useLoaderData<any>();
 
   return (
 
@@ -9,8 +40,18 @@ export default function Campaigns() {
     >
 
       <h1>
-        Campaign Route Working
+        Shopify Auth Working
       </h1>
+
+      <pre>
+        {
+          JSON.stringify(
+            data,
+            null,
+            2
+          )
+        }
+      </pre>
 
     </div>
 
