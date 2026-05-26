@@ -1,8 +1,8 @@
 import { json } from "@remix-run/node";
 import { authenticate } from "../shopify.server";
 
-export async function action({ request }: any) {
-  // 1. Authenticate via App Proxy (Bypasses CORS completely!)
+export async function loader({ request }: any) {
+  // 1. Authenticate via App Proxy
   const { admin } = await authenticate.public.appProxy(request);
 
   if (!admin) {
@@ -10,10 +10,17 @@ export async function action({ request }: any) {
   }
 
   try {
-    const body = await request.json();
-    const { id, email, brand_name } = body;
+    // 2. EXTRACT VARIABLES FROM URL INSTEAD OF BODY
+    const url = new URL(request.url);
+    const id = url.searchParams.get("id");
+    const email = url.searchParams.get("email");
+    const brand_name = url.searchParams.get("brand_name");
 
-    // 2. UPDATE METAOBJECT STATUS
+    if (!id || !email || !brand_name) {
+       return json({ error: "Missing required parameters" }, { status: 400 });
+    }
+
+    // 3. UPDATE METAOBJECT STATUS
     const updateResponse = await admin.graphql(
       `mutation updateMetaobject($id: ID!, $metaobject: MetaobjectUpdateInput!) {
         metaobjectUpdate(id: $id, metaobject: $metaobject) {
@@ -31,7 +38,7 @@ export async function action({ request }: any) {
     );
     const updateResult = await updateResponse.json();
 
-    // 3. CREATE CUSTOMER PROFILE
+    // 4. CREATE CUSTOMER PROFILE
     const customerResponse = await admin.graphql(
       `mutation customerCreate($input: CustomerInput!) {
         customerCreate(input: $input) {
@@ -51,7 +58,7 @@ export async function action({ request }: any) {
     );
     const customerResult = await customerResponse.json();
 
-    // 4. ERROR CHECKING
+    // 5. ERROR CHECKING
     const updateErrors = updateResult?.data?.metaobjectUpdate?.userErrors || [];
     const customerErrors = customerResult?.data?.customerCreate?.userErrors || [];
 
@@ -60,10 +67,6 @@ export async function action({ request }: any) {
       return json({ success: false, updateErrors, customerErrors }, { status: 400 });
     }
 
-
-    
-
-    // 5. SUCCESS
     return json({ success: true, message: "Application approved" });
 
   } catch (error: any) {

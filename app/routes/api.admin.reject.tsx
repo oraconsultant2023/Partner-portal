@@ -1,8 +1,7 @@
 import { json } from "@remix-run/node";
 import { authenticate } from "../shopify.server";
 
-export async function action({ request }: any) {
-  // 1. Authenticate via App Proxy
+export async function loader({ request }: any) {
   const { admin } = await authenticate.public.appProxy(request);
 
   if (!admin) {
@@ -10,10 +9,14 @@ export async function action({ request }: any) {
   }
 
   try {
-    const body = await request.json();
-    const { id } = body; // We only need the Metaobject ID to reject it
+    // Extract ID from URL
+    const url = new URL(request.url);
+    const id = url.searchParams.get("id");
 
-    // 2. UPDATE METAOBJECT STATUS TO "REJECTED"
+    if (!id) {
+        return json({ error: "Missing application ID" }, { status: 400 });
+    }
+
     const updateResponse = await admin.graphql(
       `mutation updateMetaobject($id: ID!, $metaobject: MetaobjectUpdateInput!) {
         metaobjectUpdate(id: $id, metaobject: $metaobject) {
@@ -34,11 +37,9 @@ export async function action({ request }: any) {
     const updateErrors = updateResult?.data?.metaobjectUpdate?.userErrors || [];
 
     if (updateErrors.length) {
-      console.log("Errors:", { updateErrors });
       return json({ success: false, updateErrors }, { status: 400 });
     }
 
-    // 3. SUCCESS
     return json({ success: true, message: "Application rejected" });
 
   } catch (error: any) {
