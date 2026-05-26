@@ -1,5 +1,5 @@
 import { json } from "@remix-run/node";
-import shopify 
+import shopify
 from "../shopify.server";
 
 const corsHeaders = {
@@ -37,12 +37,27 @@ export async function loader({
           "skmkxe-bi.myshopify.com"
         );
 
+    if (!sessions.length) {
+
+      return json(
+        {
+          success: false,
+          error: "No Shopify session found"
+        },
+        {
+          status: 500,
+          headers: corsHeaders
+        }
+      );
+
+    }
+
     const session =
       sessions[0];
 
     // GRAPHQL CLIENT
     const client =
-      new shopify.api.clients.Graphql({
+      new shopify.clients.Graphql({
         session
       });
 
@@ -101,6 +116,7 @@ export async function loader({
       )
     );
 
+    // MAP DATA
     const campaigns =
       result.data
         .metaobjects
@@ -162,6 +178,8 @@ export async function loader({
           };
 
         })
+
+        // FILTER CAMPAIGNS
         .filter((campaign: any) => {
 
           // GLOBAL
