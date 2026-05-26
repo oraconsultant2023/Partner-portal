@@ -1,8 +1,9 @@
 import { json }
 from "@remix-run/node";
 
-import shopify
-from "../shopify.server";
+import {
+  authenticate
+} from "../shopify.server";
 
 export async function loader({
   request
@@ -10,7 +11,13 @@ export async function loader({
 
   try {
 
-    // GET URL PARAMS
+    // AUTH SHOPIFY ADMIN
+    const { admin } =
+      await authenticate.admin(
+        request
+      );
+
+    // URL PARAMS
     const url =
       new URL(request.url);
 
@@ -34,85 +41,45 @@ export async function loader({
       category
     );
 
-    // GET SHOP SESSION
-    const sessions =
-      await shopify.sessionStorage.findSessionsByShop(
-        "skmkxe-bi.myshopify.com"
-      );
-
-    if (!sessions.length) {
-
-      return json([]);
-
-    }
-
-    const session =
-      sessions[0];
-
-    // GRAPHQL REQUEST
+    // GRAPHQL QUERY
     const response =
-      await fetch(
+      await admin.graphql(`
 
-        `https://partner-portal-ten-livid.vercel.app/api/partner-campaigns?email=${email}&category=${category}`,
+        query {
 
-        {
+          metaobjects(
+            type: "partner_campaign",
+            first: 50
+          ) {
 
-          method: "POST",
+            edges {
 
-          headers: {
+              node {
 
-            "Content-Type":
-              "application/json",
-"X-Shopify-Access-Token":
-  String(session.accessToken)
+                id
 
-          },
+                fields {
 
-          body: JSON.stringify({
-
-            query: `
-
-              query {
-
-                metaobjects(
-                  type: "partner_campaign",
-                  first: 50
-                ) {
-
-                  edges {
-
-                    node {
-
-                      id
-
-                      fields {
-
-                        key
-                        value
-
-                      }
-
-                    }
-
-                  }
+                  key
+                  value
 
                 }
 
               }
 
-            `
+            }
 
-          })
+          }
 
         }
 
-      );
+      `);
 
     const result =
       await response.json();
 
     console.log(
-      "GRAPHQL:",
+      "GRAPHQL RESULT:",
       JSON.stringify(
         result,
         null,
@@ -120,42 +87,44 @@ export async function loader({
       )
     );
 
-    console.log(
-  "RAW RESPONSE STATUS:",
-  response.status
-);
-
-console.log(
-  "RAW GRAPHQL RESULT:",
-  JSON.stringify(
-    result,
-    null,
-    2
-  )
-);
-
-    // FORMAT DATA
-    
-
-
+    // SAFETY CHECK
     if (
-  !result.data ||
-  !result.data.metaobjects
-) {
+      !result.data ||
+      !result.data.metaobjects
+    ) {
 
-  console.log(
-    "GRAPHQL FAILED:",
-    result
-  );
+      return json([]);
 
-  return json([]);
+    }
 
-}
+    // FORMAT CAMPAIGNS
+    const campaigns =
+      result.data.metaobjects.edges.map(
+        (edge: any) => {
 
-const campaigns =
-  result.data.metaobjects.edges
+          const fields: any = {};
 
-  
+          edge.node.fields.forEach(
+            (field: any) => {
+
+              fields[field.key] =
+                field.value;
+
+            }
+          );
+
+          return {
+
+            id:
+              edge.node.id,
+
+            ...fields
+
+          };
+
+        }
+      );
+
     // FILTER CAMPAIGNS
     const filteredCampaigns =
       campaigns.filter(
