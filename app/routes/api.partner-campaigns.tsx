@@ -1,93 +1,224 @@
-import { json } from "@remix-run/node";
-import { authenticate } from "../shopify.server";
+import { json }
+from "@remix-run/node";
 
-export async function loader({ request }: any) {
-  // 1. Authenticate securely via App Proxy (No CORS headers needed!)
-  const { admin } = await authenticate.public.appProxy(request);
+import shopify
+from "../shopify.server";
 
-  if (!admin) {
-    return json({ error: "Unauthorized: Must use App Proxy" }, { status: 401 });
-  }
+export async function loader({
+  request
+}: any) {
 
   try {
-    // 2. Extract parameters from the URL
-    const url = new URL(request.url);
-    const email = url.searchParams.get("email");
-    const category = url.searchParams.get("category");
 
-    // 3. Query the Metaobjects using the securely authenticated admin client
-    const response = await admin.graphql(`
-      query {
-        metaobjects(type: "partner_campaign", first: 50) {
-          edges {
-            node {
-              id
-              handle
-              fields {
-                key
-                value
-              }
-            }
-          }
-        }
-      }
-    `);
+    // GET URL PARAMS
+    const url =
+      new URL(request.url);
 
-    const result: any = await response.json();
+    const email =
+      url.searchParams.get(
+        "email"
+      );
 
-    if (result.errors) {
-      console.error("GraphQL Errors:", result.errors);
-      return json({ error: "GraphQL Query Failed", details: result.errors }, { status: 500 });
+    const category =
+      url.searchParams.get(
+        "category"
+      );
+
+    console.log(
+      "EMAIL:",
+      email
+    );
+
+    console.log(
+      "CATEGORY:",
+      category
+    );
+
+    // GET SHOP SESSION
+    const sessions =
+      await shopify.sessionStorage.findSessionsByShop(
+        "skmkxe-bi.myshopify.com"
+      );
+
+    if (!sessions.length) {
+
+      return json([]);
+
     }
 
-    // 4. Map the Data
-    const campaigns = result.data.metaobjects.edges.map((edge: any) => {
-      const fields: any = {};
-      edge.node.fields.forEach((field: any) => {
-        fields[field.key] = field.value;
-      });
+    const session =
+      sessions[0];
 
-      return {
-        id: edge.node.id,
-        handle: edge.node.handle,
-        campaign_name: fields.campaign_name || "",
-        campaign_type: fields.campaign_type || "",
-        target_category: fields.target_category || "",
-        partner_email: fields.partner_email || "",
-        campaign_summary: fields.campaign_summary || "",
-        budget: fields.budget || "",
-        requirements: fields.requirements || "",
-        placements: fields.placements || "",
-        status: fields.status || "",
-        start_date: fields.start_date || "",
-        end_date: fields.end_date || ""
-      };
-    })
-    // 5. Filter the Campaigns based on the user's specific data
-    .filter((campaign: any) => {
-      // GLOBAL: Show to everyone
-      if (campaign.campaign_type === "global") {
-        return true;
-      }
+    // GRAPHQL REQUEST
+    const response =
+      await fetch(
 
-      // PRIVATE: Show only if the email matches exactly
-      if (campaign.campaign_type === "private" && campaign.partner_email === email) {
-        return true;
-      }
+        "https://skmkxe-bi.myshopify.com/admin/api/2025-04/graphql.json",
 
-      // CATEGORY: Show only if the category matches
-      if (campaign.campaign_type === "category" && campaign.target_category === category) {
-        return true;
-      }
+        {
 
-      return false;
-    });
+          method: "POST",
 
-    // 6. Return the perfectly filtered list
-    return json(campaigns);
+          headers: {
 
-  } catch (error: any) {
-    console.log("CAMPAIGN ERROR:", error);
-    return json({ success: false, error: error.message }, { status: 500 });
+            "Content-Type":
+              "application/json",
+"X-Shopify-Access-Token":
+  String(session.accessToken)
+
+          },
+
+          body: JSON.stringify({
+
+            query: `
+
+              query {
+
+                metaobjects(
+                  type: "partner_campaign",
+                  first: 50
+                ) {
+
+                  edges {
+
+                    node {
+
+                      id
+
+                      fields {
+
+                        key
+                        value
+
+                      }
+
+                    }
+
+                  }
+
+                }
+
+              }
+
+            `
+
+          })
+
+        }
+
+      );
+
+    const result =
+      await response.json();
+
+    console.log(
+      "GRAPHQL:",
+      JSON.stringify(
+        result,
+        null,
+        2
+      )
+    );
+
+    // FORMAT DATA
+    const campaigns =
+      result.data.metaobjects.edges
+        .map((edge: any) => {
+
+          const fields: any = {};
+
+          edge.node.fields.forEach(
+            (field: any) => {
+
+              fields[field.key] =
+                field.value;
+
+            }
+          );
+
+          return {
+
+            id:
+              edge.node.id,
+
+            ...fields
+
+          };
+
+        });
+
+    // FILTER CAMPAIGNS
+    const filteredCampaigns =
+      campaigns.filter(
+        (campaign: any) => {
+
+          // GLOBAL
+          if (
+            campaign.campaign_type ===
+            "global"
+          ) {
+
+            return true;
+
+          }
+
+          // PRIVATE EMAIL
+          if (
+
+            campaign.campaign_type ===
+            "private"
+
+            &&
+
+            campaign.partner_email ===
+            email
+
+          ) {
+
+            return true;
+
+          }
+
+          // CATEGORY
+          if (
+
+            campaign.campaign_type ===
+            "category"
+
+            &&
+
+            campaign.target_category ===
+            category
+
+          ) {
+
+            return true;
+
+          }
+
+          return false;
+
+        }
+      );
+
+    console.log(
+      "FILTERED:",
+      filteredCampaigns
+    );
+
+    return json(
+      filteredCampaigns
+    );
+
+  } catch(error: any) {
+
+    console.log(
+      "CAMPAIGN ERROR:",
+      error
+    );
+
+    return json([]);
+
   }
+
 }
