@@ -53,7 +53,7 @@ export async function loader({
     const response =
       await fetch(
 
-        "https://skmkxe-bi.myshopify.com/admin/api/2025-04/graphql.json",
+        `https://partner-portal-ten-livid.vercel.app/api/partner-campaigns?email=${email}&category=${category}`,
 
         {
 
