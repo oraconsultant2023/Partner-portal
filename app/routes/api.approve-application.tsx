@@ -60,6 +60,9 @@ export async function action({ request }: any) {
       return json({ success: false, updateErrors, customerErrors }, { status: 400 });
     }
 
+
+    
+
     // 5. SUCCESS
     return json({ success: true, message: "Application approved" });
 
