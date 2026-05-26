@@ -2,7 +2,7 @@ import { json } from "@remix-run/node";
 import { authenticate } from "../shopify.server";
 
 export async function loader({ request }: any) {
-  // 1. Authenticate securely via App Proxy (No CORS headers needed!)
+  // 1. Securely authenticate via App Proxy
   const { admin } = await authenticate.public.appProxy(request);
 
   if (!admin) {
@@ -10,12 +10,12 @@ export async function loader({ request }: any) {
   }
 
   try {
-    // 2. Extract parameters from the URL
+    // 2. Extract parameters from the URL (sent by your Liquid dashboard)
     const url = new URL(request.url);
     const email = url.searchParams.get("email");
     const category = url.searchParams.get("category");
 
-    // 3. Query the Metaobjects using the securely authenticated admin client
+    // 3. Query the Campaigns
     const response = await admin.graphql(`
       query {
         metaobjects(type: "partner_campaign", first: 50) {
@@ -63,27 +63,14 @@ export async function loader({ request }: any) {
         end_date: fields.end_date || ""
       };
     })
-    // 5. Filter the Campaigns based on the user's specific data
+    // 5. Filter the Campaigns so brands only see what they are allowed to see
     .filter((campaign: any) => {
-      // GLOBAL: Show to everyone
-      if (campaign.campaign_type === "global") {
-        return true;
-      }
-
-      // PRIVATE: Show only if the email matches exactly
-      if (campaign.campaign_type === "private" && campaign.partner_email === email) {
-        return true;
-      }
-
-      // CATEGORY: Show only if the category matches
-      if (campaign.campaign_type === "category" && campaign.target_category === category) {
-        return true;
-      }
-
+      if (campaign.campaign_type === "global") return true;
+      if (campaign.campaign_type === "private" && campaign.partner_email === email) return true;
+      if (campaign.campaign_type === "category" && campaign.target_category === category) return true;
       return false;
     });
 
-    // 6. Return the perfectly filtered list
     return json(campaigns);
 
   } catch (error: any) {
