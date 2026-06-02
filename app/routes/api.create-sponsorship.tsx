@@ -106,14 +106,14 @@ export async function action({ request }: ActionFunctionArgs) {
         variables: {
           metaobject: {
             type: "sponsorship_slot",
-            fields: fields,
             capabilities: {
               publishable: {
-                status: "ACTIVE",
-              },
+                status: "ACTIVE"
+              }
             },
-          },
-        },
+            fields: fields
+          }
+        }
       },
     );
 
