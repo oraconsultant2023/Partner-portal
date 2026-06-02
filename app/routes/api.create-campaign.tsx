@@ -104,6 +104,11 @@ export async function action({ request }: ActionFunctionArgs) {
         variables: {
           metaobject: {
             type: "partner_campaign",
+             capabilities: {
+          publishable: {
+            status: "ACTIVE"
+          }
+        },
             
             fields: [
               { key: "campaign_name", value: campaignName },
