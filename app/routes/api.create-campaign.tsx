@@ -11,8 +11,15 @@ export async function action({ request }: ActionFunctionArgs) {
     const body = await request.json();
     const { customerId, campaignName, status, startDate, endDate, fileName, fileData, mimeType } = body;
 
+    // --- SAFETY CHECK: Ensure Customer ID exists ---
+    if (!customerId) {
+      return json({ success: false, error: "Missing Customer ID. Please select a partner from the dropdown." }, { status: 400 });
+    }
+
+    // Shopify requires the full global ID format. This safely handles both "12345" and "gid://shopify/Customer/12345"
+    const formattedCustomerId = customerId.includes("gid://") ? customerId : `gid://shopify/Customer/${customerId}`;
+
     // --- Format Dates for Shopify ---
-    // Shopify expects "YYYY-MM-DDTHH:MM:SS". The HTML input gives "YYYY-MM-DD".
     const formattedStartDate = startDate ? `${startDate}T00:00:00` : null;
     const formattedEndDate = endDate ? `${endDate}T00:00:00` : null;
 
@@ -114,21 +121,21 @@ export async function action({ request }: ActionFunctionArgs) {
     if (metaobjectErrors.length > 0) {
       return json({ 
         success: false, 
-        error: `Metaobject Configuration Error: ${metaobjectErrors[0].message}. Ensure the field keys (campaign_name, status, start_date, end_date, invoice_pdf) match your Shopify settings.` 
+        error: `Metaobject Configuration Error: ${metaobjectErrors[0].message}` 
       }, { status: 400 });
     }
 
     const newMetaobjectId = metaobjectData.data?.metaobjectCreate?.metaobject?.id;
     if (!newMetaobjectId) return json({ success: false, error: "Metaobject creation returned empty payload data." }, { status: 400 });
 
-    // --- STEP 5: Attach Metaobject to Customer ---
+    // --- STEP 5: Attach Metaobject to Customer (Using formattedCustomerId) ---
     const customerQueryRes = await admin.graphql(
       `query getCustomerMetafields($id: ID!) {
         customer(id: $id) {
           metafield(namespace: "custom", key: "partner_campaigns") { value }
         }
       }`,
-      { variables: { id: `gid://shopify/Customer/${customerId}` } }
+      { variables: { id: formattedCustomerId } }
     );
     const customerData = await customerQueryRes.json();
     
@@ -150,7 +157,7 @@ export async function action({ request }: ActionFunctionArgs) {
       {
         variables: {
           input: {
-            id: `gid://shopify/Customer/${customerId}`,
+            id: formattedCustomerId,
             metafields: [
               {
                 namespace: "custom",
