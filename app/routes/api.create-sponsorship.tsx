@@ -84,10 +84,15 @@ export async function action({ request }: ActionFunctionArgs) {
     const fields = [
       { key: "title", value: title },
       { key: "description", value: description },
-      { key: "placement_type", value: placementType },
+      // Fix: List types must be sent as JSON stringified arrays
+      { key: "placement_type", value: JSON.stringify([placementType]) },
       { key: "specs", value: specs },
       { key: "rate", value: rate },
-      { key: "inventory_status", value: status || "Available" },
+      // Fix: List types must be sent as JSON stringified arrays
+      {
+        key: "inventory_status",
+        value: JSON.stringify([status || "Available"]),
+      },
     ];
 
     if (shopifyFileId) {
@@ -108,12 +113,12 @@ export async function action({ request }: ActionFunctionArgs) {
             type: "sponsorship_slot",
             capabilities: {
               publishable: {
-                status: "ACTIVE"
-              }
+                status: "ACTIVE",
+              },
             },
-            fields: fields
-          }
-        }
+            fields: fields,
+          },
+        },
       },
     );
 
