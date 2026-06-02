@@ -104,6 +104,7 @@ export async function action({ request }: ActionFunctionArgs) {
         variables: {
           metaobject: {
             type: "partner_campaign",
+            status: "ACTIVE", // <--- THIS FORCES IT TO PUBLISH IMMEDIATELY
             fields: [
               { key: "campaign_name", value: campaignName },
               { key: "status", value: status },
