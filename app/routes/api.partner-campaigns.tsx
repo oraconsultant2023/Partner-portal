@@ -3,7 +3,8 @@ from "@remix-run/node";
 
 import {
   authenticate
-} from "../shopify.server";
+}
+from "../shopify.server";
 
 export async function loader({
   request
@@ -11,11 +12,10 @@ export async function loader({
 
   try {
 
-    // AUTH SHOPIFY ADMIN
-    const { admin } =
-      await authenticate.admin(
-        request
-      );
+    // VALIDATE APP PROXY
+    await authenticate.public.appProxy(
+      request
+    );
 
     // URL PARAMS
     const url =
@@ -41,53 +41,74 @@ export async function loader({
       category
     );
 
-    // GRAPHQL QUERY
+    // FETCH FROM STORE METAOBJECT API
     const response =
-      await admin.graphql(`
+      await fetch(
 
-        query {
+`https://skmkxe-bi.myshopify.com/api/2025-04/graphql.json`,
 
-          metaobjects(
-            type: "partner_campaign",
-            first: 50
-          ) {
+        {
 
-            edges {
+          method: "POST",
 
-              node {
+          headers: {
 
-                id
+            "Content-Type":
+              "application/json",
 
-                fields {
+            "X-Shopify-Storefront-Access-Token":
+              process.env.SHOPIFY_STOREFRONT_TOKEN!
 
-                  key
-                  value
+          },
+
+          body: JSON.stringify({
+
+            query: `
+
+              query {
+
+                metaobjects(
+                  type: "partner_campaign",
+                  first: 50
+                ) {
+
+                  edges {
+
+                    node {
+
+                      id
+
+                      fields {
+
+                        key
+                        value
+
+                      }
+
+                    }
+
+                  }
 
                 }
 
               }
 
-            }
+            `
 
-          }
+          })
 
         }
 
-      `);
+      );
 
     const result =
       await response.json();
 
     console.log(
-      "GRAPHQL RESULT:",
-      JSON.stringify(
-        result,
-        null,
-        2
-      )
+      "GRAPHQL:",
+      result
     );
 
-    // SAFETY CHECK
     if (
       !result.data ||
       !result.data.metaobjects
@@ -97,7 +118,7 @@ export async function loader({
 
     }
 
-    // FORMAT CAMPAIGNS
+    // FORMAT
     const campaigns =
       result.data.metaobjects.edges.map(
         (edge: any) => {
@@ -125,12 +146,11 @@ export async function loader({
         }
       );
 
-    // FILTER CAMPAIGNS
+    // FILTER
     const filteredCampaigns =
       campaigns.filter(
         (campaign: any) => {
 
-          // GLOBAL
           if (
             campaign.campaign_type ===
             "global"
@@ -140,7 +160,6 @@ export async function loader({
 
           }
 
-          // PRIVATE EMAIL
           if (
 
             campaign.campaign_type ===
@@ -157,7 +176,6 @@ export async function loader({
 
           }
 
-          // CATEGORY
           if (
 
             campaign.campaign_type ===
@@ -179,11 +197,6 @@ export async function loader({
         }
       );
 
-    console.log(
-      "FILTERED:",
-      filteredCampaigns
-    );
-
     return json(
       filteredCampaigns
     );
@@ -191,7 +204,7 @@ export async function loader({
   } catch(error: any) {
 
     console.log(
-      "CAMPAIGN ERROR:",
+      "APP PROXY ERROR:",
       error
     );
 
