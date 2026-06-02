@@ -11,6 +11,11 @@ export async function action({ request }: ActionFunctionArgs) {
     const body = await request.json();
     const { customerId, campaignName, status, startDate, endDate, fileName, fileData, mimeType } = body;
 
+    // --- Format Dates for Shopify ---
+    // Shopify expects "YYYY-MM-DDTHH:MM:SS". The HTML input gives "YYYY-MM-DD".
+    const formattedStartDate = startDate ? `${startDate}T00:00:00` : null;
+    const formattedEndDate = endDate ? `${endDate}T00:00:00` : null;
+
     // --- STEP 1: Request Staged Upload Target ---
     const stagedUploadRes = await admin.graphql(
       `mutation stagedUploadsCreate($input: [StagedUploadInput!]!) {
@@ -95,8 +100,8 @@ export async function action({ request }: ActionFunctionArgs) {
             fields: [
               { key: "campaign_name", value: campaignName },
               { key: "status", value: status },
-              { key: "start_date", value: startDate },
-              { key: "end_date", value: endDate || null },
+              { key: "start_date", value: formattedStartDate },
+              { key: "end_date", value: formattedEndDate },
               { key: "invoice_pdf", value: shopifyFileId }
             ]
           }
@@ -106,7 +111,6 @@ export async function action({ request }: ActionFunctionArgs) {
     const metaobjectData = await metaobjectRes.json();
     const metaobjectErrors = metaobjectData.data?.metaobjectCreate?.userErrors || [];
     
-    // SAFE CHECK: This will now catch exactly why it was returning null!
     if (metaobjectErrors.length > 0) {
       return json({ 
         success: false, 
