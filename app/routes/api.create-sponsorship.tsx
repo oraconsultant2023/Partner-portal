@@ -5,11 +5,22 @@ export async function action({ request }: ActionFunctionArgs) {
   const { admin } = await authenticate.public.appProxy(request);
   if (!admin) return json({ error: "Unauthorized" }, { status: 401 });
 
-  if (request.method !== "POST") return json({ error: "Method not allowed" }, { status: 405 });
+  if (request.method !== "POST")
+    return json({ error: "Method not allowed" }, { status: 405 });
 
   try {
     const body = await request.json();
-    const { title, description, placementType, specs, rate, status, fileName, fileData, mimeType } = body;
+    const {
+      title,
+      description,
+      placementType,
+      specs,
+      rate,
+      status,
+      fileName,
+      fileData,
+      mimeType,
+    } = body;
 
     let shopifyFileId = null;
 
@@ -22,18 +33,30 @@ export async function action({ request }: ActionFunctionArgs) {
           }
         }`;
       const stagedUploadRes = await admin.graphql(stagedUploadsQuery, {
-        variables: { input: [{ filename: fileName, mimeType: mimeType, resource: "FILE", httpMethod: "POST" }] }
+        variables: {
+          input: [
+            {
+              filename: fileName,
+              mimeType: mimeType,
+              resource: "FILE",
+              httpMethod: "POST",
+            },
+          ],
+        },
       });
       const stagedUploadData = await stagedUploadRes.json();
       const target = stagedUploadData.data.stagedUploadsCreate.stagedTargets[0];
-      
-      const buffer = Buffer.from(fileData, 'base64');
+
+      const buffer = Buffer.from(fileData, "base64");
       const formData = new FormData();
       target.parameters.forEach((p: any) => formData.append(p.name, p.value));
-      formData.append('file', new Blob([buffer], { type: mimeType }));
+      formData.append("file", new Blob([buffer], { type: mimeType }));
 
-      const uploadResponse = await fetch(target.url, { method: 'POST', body: formData });
-      
+      const uploadResponse = await fetch(target.url, {
+        method: "POST",
+        body: formData,
+      });
+
       if (uploadResponse.ok) {
         const createFileQuery = `
           mutation fileCreate($files: [FileCreateInput!]!) {
@@ -42,7 +65,15 @@ export async function action({ request }: ActionFunctionArgs) {
             }
           }`;
         const createFileRes = await admin.graphql(createFileQuery, {
-          variables: { files: [{ originalSource: target.resourceUrl, alt: fileName, contentType: "IMAGE" }] }
+          variables: {
+            files: [
+              {
+                originalSource: target.resourceUrl,
+                alt: fileName,
+                contentType: "IMAGE",
+              },
+            ],
+          },
         });
         const createFileData = await createFileRes.json();
         shopifyFileId = createFileData.data.fileCreate.files[0].id;
@@ -56,7 +87,7 @@ export async function action({ request }: ActionFunctionArgs) {
       { key: "placement_type", value: placementType },
       { key: "specs", value: specs },
       { key: "rate", value: rate },
-      { key: "inventory_status", value: status || "Available" }
+      { key: "inventory_status", value: status || "Available" },
     ];
 
     if (shopifyFileId) {
@@ -75,22 +106,31 @@ export async function action({ request }: ActionFunctionArgs) {
         variables: {
           metaobject: {
             type: "sponsorship_slot",
-            status: "ACTIVE", 
-            fields: fields
-          }
-        }
-      }
+            fields: fields,
+            capabilities: {
+              publishable: {
+                status: "ACTIVE",
+              },
+            },
+          },
+        },
+      },
     );
 
     const metaobjectData = await metaobjectRes.json();
     const errors = metaobjectData.data?.metaobjectCreate?.userErrors || [];
 
     if (errors.length > 0) {
-      return json({ success: false, error: `Metaobject Error: ${errors[0].message}` }, { status: 400 });
+      return json(
+        { success: false, error: `Metaobject Error: ${errors[0].message}` },
+        { status: 400 },
+      );
     }
 
-    return json({ success: true, message: "Sponsorship slot created successfully!" });
-
+    return json({
+      success: true,
+      message: "Sponsorship slot created successfully!",
+    });
   } catch (error: any) {
     console.error("SPONSORSHIP CREATION ERROR:", error);
     return json({ success: false, error: error.message }, { status: 500 });
