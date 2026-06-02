@@ -20,6 +20,7 @@ export async function action({ request }: ActionFunctionArgs) {
             resourceUrl
             parameters { name value }
           }
+          userErrors { field message }
         }
       }`,
       {
@@ -30,13 +31,18 @@ export async function action({ request }: ActionFunctionArgs) {
     );
 
     const stagedData = await stagedUploadRes.json();
-    const target = stagedData.data.stagedUploadsCreate.stagedTargets[0];
+    const stagedErrors = stagedData.data?.stagedUploadsCreate?.userErrors || [];
+    if (stagedErrors.length > 0) {
+      return json({ success: false, error: `Staged Upload Error: ${stagedErrors[0].message}` }, { status: 400 });
+    }
+
+    const target = stagedData.data?.stagedUploadsCreate?.stagedTargets?.[0];
+    if (!target) return json({ success: false, error: "Failed to generate file upload target from Shopify." }, { status: 400 });
 
     // --- STEP 2: Upload File to Shopify Staging URL ---
     const fileBuffer = Buffer.from(fileData, 'base64');
     const uploadFormData = new FormData();
     
-    // Type the parameter to satisfy TS
     target.parameters.forEach((param: { name: string; value: string }) => {
       uploadFormData.append(param.name, param.value);
     });
@@ -49,13 +55,14 @@ export async function action({ request }: ActionFunctionArgs) {
       body: uploadFormData
     });
 
-    if (!uploadResponse.ok) throw new Error("Failed to upload file to Shopify staging");
+    if (!uploadResponse.ok) throw new Error("Failed to stream file data to Shopify staging servers.");
 
     // --- STEP 3: Register File in Shopify ---
     const fileCreateRes = await admin.graphql(
       `mutation fileCreate($files: [FileCreateInput!]!) {
         fileCreate(files: $files) {
           files { id }
+          userErrors { field message }
         }
       }`,
       {
@@ -65,13 +72,20 @@ export async function action({ request }: ActionFunctionArgs) {
       }
     );
     const fileCreateData = await fileCreateRes.json();
-    const shopifyFileId = fileCreateData.data.fileCreate.files[0].id;
+    const fileErrors = fileCreateData.data?.fileCreate?.userErrors || [];
+    if (fileErrors.length > 0) {
+      return json({ success: false, error: `File Registration Error: ${fileErrors[0].message}` }, { status: 400 });
+    }
+
+    const shopifyFileId = fileCreateData.data?.fileCreate?.files?.[0]?.id;
+    if (!shopifyFileId) return json({ success: false, error: "Shopify did not return a valid File ID." }, { status: 400 });
 
     // --- STEP 4: Create Campaign Metaobject ---
     const metaobjectRes = await admin.graphql(
       `mutation CreateCampaign($metaobject: MetaobjectCreateInput!) {
         metaobjectCreate(metaobject: $metaobject) {
           metaobject { id }
+          userErrors { field message }
         }
       }`,
       {
@@ -90,7 +104,18 @@ export async function action({ request }: ActionFunctionArgs) {
       }
     );
     const metaobjectData = await metaobjectRes.json();
-    const newMetaobjectId = metaobjectData.data.metaobjectCreate.metaobject.id;
+    const metaobjectErrors = metaobjectData.data?.metaobjectCreate?.userErrors || [];
+    
+    // SAFE CHECK: This will now catch exactly why it was returning null!
+    if (metaobjectErrors.length > 0) {
+      return json({ 
+        success: false, 
+        error: `Metaobject Configuration Error: ${metaobjectErrors[0].message}. Ensure the field keys (campaign_name, status, start_date, end_date, invoice_pdf) match your Shopify settings.` 
+      }, { status: 400 });
+    }
+
+    const newMetaobjectId = metaobjectData.data?.metaobjectCreate?.metaobject?.id;
+    if (!newMetaobjectId) return json({ success: false, error: "Metaobject creation returned empty payload data." }, { status: 400 });
 
     // --- STEP 5: Attach Metaobject to Customer ---
     const customerQueryRes = await admin.graphql(
@@ -99,12 +124,12 @@ export async function action({ request }: ActionFunctionArgs) {
           metafield(namespace: "custom", key: "partner_campaigns") { value }
         }
       }`,
-      { variables: { id: customerId } }
+      { variables: { id: `gid://shopify/Customer/${customerId}` } }
     );
     const customerData = await customerQueryRes.json();
     
     let existingCampaigns: string[] = [];
-    const existingMetafieldValue = customerData.data.customer.metafield?.value;
+    const existingMetafieldValue = customerData.data?.customer?.metafield?.value;
     
     if (existingMetafieldValue) {
        existingCampaigns = JSON.parse(existingMetafieldValue); 
@@ -112,7 +137,7 @@ export async function action({ request }: ActionFunctionArgs) {
     
     existingCampaigns.push(newMetaobjectId);
 
-    await admin.graphql(
+    const customerUpdateRes = await admin.graphql(
       `mutation updateCustomerMetafield($input: CustomerInput!) {
         customerUpdate(input: $input) {
           userErrors { message }
@@ -121,7 +146,7 @@ export async function action({ request }: ActionFunctionArgs) {
       {
         variables: {
           input: {
-            id: customerId,
+            id: `gid://shopify/Customer/${customerId}`,
             metafields: [
               {
                 namespace: "custom",
@@ -134,6 +159,12 @@ export async function action({ request }: ActionFunctionArgs) {
         }
       }
     );
+    
+    const customerUpdateData = await customerUpdateRes.json();
+    const customerErrors = customerUpdateData.data?.customerUpdate?.userErrors || [];
+    if (customerErrors.length > 0) {
+      return json({ success: false, error: `Customer Link Error: ${customerErrors[0].message}` }, { status: 400 });
+    }
 
     return json({ success: true, message: "Campaign created and linked" });
 
