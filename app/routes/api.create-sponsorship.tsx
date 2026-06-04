@@ -10,6 +10,8 @@ export async function action({ request }: ActionFunctionArgs) {
 
   try {
     const body = await request.json();
+    
+    // 1. EXTRACT NEW DATE FIELDS
     const {
       title,
       description,
@@ -17,6 +19,8 @@ export async function action({ request }: ActionFunctionArgs) {
       specs,
       rate,
       status,
+      startDate,
+      endDate,
       fileName,
       fileData,
       mimeType,
@@ -84,15 +88,13 @@ export async function action({ request }: ActionFunctionArgs) {
     const fields = [
       { key: "title", value: title },
       { key: "description", value: description },
-      // Fix: List types must be sent as JSON stringified arrays
       { key: "placement_type", value: JSON.stringify([placementType]) },
       { key: "specs", value: specs },
       { key: "rate", value: rate },
-      // Fix: List types must be sent as JSON stringified arrays
-      {
-        key: "inventory_status",
-        value: JSON.stringify([status || "Available"]),
-      },
+      { key: "inventory_status", value: JSON.stringify([status || "Available"]) },
+      // 2. ADD DATE FIELDS TO GRAPHQL PAYLOAD
+      { key: "start_date", value: startDate },
+      { key: "end_date", value: endDate },
     ];
 
     if (shopifyFileId) {
