@@ -13,20 +13,21 @@ export async function action({ request }: ActionFunctionArgs) {
     const { slotId, slotTitle, partnerName, partnerEmail, message } = body;
 
     // Inside your action function, update the 'fields' array to include these new keys:
-    const fields = [
-      { key: "slot_id", value: slotId },
-      { key: "slot_title", value: slotTitle },
-      { key: "partner_name", value: partnerName },
-      { key: "partner_email", value: partnerEmail },
-      { key: "status", value: "Pending" },
-      { key: "message", value: message },
-      // ADD THESE:
-      { key: "slot_rate", value: body.slotRate },
-      { key: "slot_placement", value: body.slotPlacement },
-      { key: "slot_start", value: body.slotStart },
-      { key: "slot_end", value: body.slotEnd },
-      { key: "slot_thumbnail", value: body.slotThumbnail },
-    ];
+    // Inside your action function:
+const fields = [
+  { key: "slot_id", value: slotId },
+  { key: "slot_title", value: slotTitle },
+  { key: "partner_name", value: partnerName },
+  { key: "partner_email", value: partnerEmail },
+  { key: "status", value: "Pending" },
+  { key: "message", value: message },
+  // Map these to your new fields:
+  { key: "slot_rate", value: body.slotRate },
+  { key: "slot_placement", value: body.slotPlacement },
+  { key: "slot_start", value: body.slotStart },
+  { key: "slot_end", value: body.slotEnd },
+  { key: "slot_thumbnail", value: body.slotThumbnail }
+];
 
     const metaobjectRes = await admin.graphql(
       `mutation CreateSponsorshipRequest($metaobject: MetaobjectCreateInput!) {
