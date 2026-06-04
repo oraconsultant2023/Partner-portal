@@ -12,14 +12,20 @@ export async function action({ request }: ActionFunctionArgs) {
     const body = await request.json();
     const { slotId, slotTitle, partnerName, partnerEmail, message } = body;
 
+    // Inside your action function, update the 'fields' array to include these new keys:
     const fields = [
       { key: "slot_id", value: slotId },
       { key: "slot_title", value: slotTitle },
       { key: "partner_name", value: partnerName },
       { key: "partner_email", value: partnerEmail },
-      // FIXED: Sent as a simple string to match your "One" Choice List
-      { key: "status", value: "Pending" }, 
-      { key: "message", value: message }
+      { key: "status", value: "Pending" },
+      { key: "message", value: message },
+      // ADD THESE:
+      { key: "slot_rate", value: body.slotRate },
+      { key: "slot_placement", value: body.slotPlacement },
+      { key: "slot_start", value: body.slotStart },
+      { key: "slot_end", value: body.slotEnd },
+      { key: "slot_thumbnail", value: body.slotThumbnail },
     ];
 
     const metaobjectRes = await admin.graphql(
@@ -37,14 +43,17 @@ export async function action({ request }: ActionFunctionArgs) {
             fields: fields,
           },
         },
-      }
+      },
     );
 
     const metaobjectData = await metaobjectRes.json();
     const errors = metaobjectData.data?.metaobjectCreate?.userErrors || [];
 
     if (errors.length > 0) {
-      return json({ success: false, error: errors[0].message }, { status: 400 });
+      return json(
+        { success: false, error: errors[0].message },
+        { status: 400 },
+      );
     }
 
     return json({ success: true, message: "Request created!" });
