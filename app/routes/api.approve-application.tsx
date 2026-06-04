@@ -13,9 +13,11 @@ export async function loader({ request }: any) {
     const url = new URL(request.url);
     const id = url.searchParams.get("id");
     const email = url.searchParams.get("email");
+    const category = url.searchParams.get("category");
     const brand_name = url.searchParams.get("brand_name");
 
-    if (!id || !email || !brand_name) {
+
+    if (!id || !email || !brand_name || !category) {
        return json({ error: "Missing required parameters" }, { status: 400 });
     }
 
@@ -51,7 +53,7 @@ export async function loader({ request }: any) {
             firstName: brand_name,
             lastName: "Partner",
             email,
-            tags: ["partner"]
+            tags: ["partner", category]
           }
         }
       }
