@@ -9,20 +9,27 @@ export async function action({ request }: ActionFunctionArgs) {
 
   try {
     const { requestId } = await request.json();
+    
+    // FIXED: Ensure GID format
+    const safeRequestId = requestId.includes("gid://") ? requestId : `gid://shopify/Metaobject/${requestId}`;
 
     const updateRequestRes = await admin.graphql(
       `mutation UpdateRequest($id: ID!, $metaobject: MetaobjectUpdateInput!) {
         metaobjectUpdate(id: $id, metaobject: $metaobject) {
-          userErrors { message }
+          userErrors { field message }
         }
       }`,
       {
         variables: {
-          id: requestId,
+          id: safeRequestId,
           metaobject: { fields: [{ key: "status", value: "Rejected" }] }
         }
       }
     );
+
+    const requestUpdateData = await updateRequestRes.json();
+    const requestErrors = requestUpdateData.data?.metaobjectUpdate?.userErrors || [];
+    if (requestErrors.length > 0) throw new Error("Request Update Error: " + requestErrors[0].message);
 
     return json({ success: true, message: "Rejected successfully" });
   } catch (error: any) {
