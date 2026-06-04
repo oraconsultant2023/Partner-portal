@@ -15,19 +15,20 @@ export async function action({ request }: ActionFunctionArgs) {
     // Inside your action function, update the 'fields' array to include these new keys:
     // Inside your action function:
 const fields = [
-  { key: "slot_id", value: slotId },
-  { key: "slot_title", value: slotTitle },
-  { key: "partner_name", value: partnerName },
-  { key: "partner_email", value: partnerEmail },
+  { key: "slot_id", value: body.slotId },
+  { key: "slot_title", value: body.slotTitle },
+  { key: "partner_name", value: body.partnerName },
+  { key: "partner_email", value: body.partnerEmail },
   { key: "status", value: "Pending" },
-  { key: "message", value: message },
-  // Map these to your new fields:
+  { key: "message", value: body.message },
+  // Map the new fields
   { key: "slot_rate", value: body.slotRate },
   { key: "slot_placement", value: body.slotPlacement },
   { key: "slot_start", value: body.slotStart },
   { key: "slot_end", value: body.slotEnd },
   { key: "slot_thumbnail", value: body.slotThumbnail }
 ];
+
 
     const metaobjectRes = await admin.graphql(
       `mutation CreateSponsorshipRequest($metaobject: MetaobjectCreateInput!) {
