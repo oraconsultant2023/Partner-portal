@@ -16,6 +16,14 @@ export async function loader({ request }: LoaderFunctionArgs) {
               fields {
                 key
                 value
+                reference {
+                  ... on MediaImage {
+                    image { url }
+                  }
+                  ... on GenericFile {
+                    url
+                  }
+                }
               }
             }
           }
@@ -25,10 +33,18 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
     const data = await response.json();
     
-    // Format the deeply nested GraphQL data into a clean, flat array of objects
+    // Format the nested GraphQL data and grab the real image URLs
     const slots = data.data.metaobjects.edges.map((edge: any) => {
       const fields = edge.node.fields.reduce((acc: any, field: any) => {
-        acc[field.key] = field.value;
+        let finalValue = field.value;
+        
+        // If the field is a file/image, grab the actual URL
+        if (field.reference) {
+          if (field.reference.image?.url) finalValue = field.reference.image.url;
+          else if (field.reference.url) finalValue = field.reference.url;
+        }
+        
+        acc[field.key] = finalValue;
         return acc;
       }, {});
 
