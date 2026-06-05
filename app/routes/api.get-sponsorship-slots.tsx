@@ -33,26 +33,24 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
     const data = await response.json();
     
-    // Format the nested GraphQL data and grab the real image URLs
     const slots = data.data.metaobjects.edges.map((edge: any) => {
       const fields = edge.node.fields.reduce((acc: any, field: any) => {
         let finalValue = field.value;
         
-        // If the field is a file/image, grab the actual URL
+        // This is the magic check: If it's an image/file, grab the HTTP URL instead of the GID
         if (field.reference) {
-          if (field.reference.image?.url) finalValue = field.reference.image.url;
-          else if (field.reference.url) finalValue = field.reference.url;
+          if (field.reference.image?.url) {
+            finalValue = field.reference.image.url;
+          } else if (field.reference.url) {
+            finalValue = field.reference.url;
+          }
         }
         
         acc[field.key] = finalValue;
         return acc;
       }, {});
 
-      return {
-        id: edge.node.id,
-        handle: edge.node.handle,
-        ...fields
-      };
+      return { id: edge.node.id, handle: edge.node.handle, ...fields };
     });
 
     return json({ success: true, slots });
