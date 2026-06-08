@@ -43,15 +43,22 @@ export async function action({ request }: ActionFunctionArgs) {
     const method = request.method;
 
     // DELETE LOGIC
-    if (method === "DELETE") {
-      const { id } = await request.json();
-      const response = await admin.graphql(`
-        mutation delete($id: ID!) { metaobjectDelete(id: $id) { deletedId userErrors { message } } }
-      `, { variables: { id } });
-      const data: any = await response.json();
-      const errors = data?.data?.metaobjectDelete?.userErrors;
-      return json({ success: !errors?.length, error: errors?.[0]?.message });
-    }
+    // Inside your action function:
+if (method === "DELETE") {
+  const { id } = await request.json(); // This needs the header above to work!
+  const response = await admin.graphql(
+    `mutation delete($id: ID!) { 
+      metaobjectDelete(id: $id) { 
+        deletedId 
+        userErrors { message } 
+      } 
+    }`, 
+    { variables: { id } }
+  );
+  const data: any = await response.json();
+  const errors = data?.data?.metaobjectDelete?.userErrors;
+  return json({ success: !errors?.length, error: errors?.[0]?.message });
+}
 
     // CREATE LOGIC (POST)
     if (method === "POST") {
