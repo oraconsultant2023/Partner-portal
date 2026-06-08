@@ -11,10 +11,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
     const { admin } = await authenticate.public.appProxy(request);
 
     if (!admin) {
-      return json(
-        { success: false, error: "Unauthorized" },
-        { status: 401 }
-      );
+      return json({ success: false, error: "Unauthorized" }, { status: 401 });
     }
 
     const response = await admin.graphql(`
@@ -32,32 +29,16 @@ export async function loader({ request }: LoaderFunctionArgs) {
     `);
 
     const result: any = await response.json();
+    const faq = result?.data?.metaobjects?.nodes?.map((node: any) => {
+      const item: any = { id: node.id };
+      node.fields.forEach((field: any) => { item[field.key] = field.value; });
+      return item;
+    }) || [];
 
-    const faq =
-      result?.data?.metaobjects?.nodes?.map((node: any) => {
-        const item: any = { id: node.id };
-
-        node.fields.forEach((field: any) => {
-          item[field.key] = field.value;
-        });
-
-        return item;
-      }) || [];
-
-    return json({
-      success: true,
-      faq,
-    });
+    return json({ success: true, faq });
   } catch (error: any) {
     console.error("FAQ LOADER ERROR:", error);
-
-    return json(
-      {
-        success: false,
-        error: error.message,
-      },
-      { status: 500 }
-    );
+    return json({ success: false, error: error.message }, { status: 500 });
   }
 }
 
@@ -67,10 +48,7 @@ export async function action({ request }: ActionFunctionArgs) {
     const { admin } = await authenticate.public.appProxy(request);
 
     if (!admin) {
-      return json(
-        { success: false, error: "Unauthorized" },
-        { status: 401 }
-      );
+      return json({ success: false, error: "Unauthorized" }, { status: 401 });
     }
 
     const body = await request.json();
@@ -79,13 +57,8 @@ export async function action({ request }: ActionFunctionArgs) {
       `
       mutation CreateFaq($metaobject: MetaobjectCreateInput!) {
         metaobjectCreate(metaobject: $metaobject) {
-          metaobject {
-            id
-          }
-          userErrors {
-            field
-            message
-          }
+          metaobject { id }
+          userErrors { field message }
         }
       }
       `,
@@ -94,14 +67,8 @@ export async function action({ request }: ActionFunctionArgs) {
           metaobject: {
             type: "partner_faq",
             fields: [
-              {
-                key: "question",
-                value: body.question,
-              },
-              {
-                key: "answer",
-                value: body.answer,
-              },
+              { key: "question", value: body.question },
+              { key: "answer", value: body.answer },
             ],
           },
         },
@@ -109,28 +76,16 @@ export async function action({ request }: ActionFunctionArgs) {
     );
 
     const data: any = await response.json();
-
     const errors = data?.data?.metaobjectCreate?.userErrors;
 
     if (errors?.length) {
-      return json({
-        success: false,
-        error: errors[0].message,
-      });
+      return json({ success: false, error: errors[0].message }, { status: 422 });
     }
 
-    return json({
-      success: true,
-    });
+    return json({ success: true });
   } catch (error: any) {
     console.error("FAQ ACTION ERROR:", error);
-
-    return json(
-      {
-        success: false,
-        error: error.message,
-      },
-      { status: 500 }
-    );
+    // Explicitly returning JSON here ensures no raw text strings are sent
+    return json({ success: false, error: error.message || "Server Error" }, { status: 500 });
   }
 }
