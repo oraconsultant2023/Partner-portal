@@ -28,7 +28,8 @@ export async function loader({ request }: LoaderFunctionArgs) {
       }
     `);
 
-    const data = await response.json();
+    // FIX: Cast as 'any' to clear the TypeScript errors for data.errors
+    const data: any = await response.json();
     
     if (data.errors) {
       console.error("GraphQL Errors:", data.errors);
