@@ -30,6 +30,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
     // FIX: Cast as 'any' to clear the TypeScript errors for data.errors
     const data: any = await response.json();
+
     
     if (data.errors) {
       console.error("GraphQL Errors:", data.errors);
@@ -52,6 +53,10 @@ export async function loader({ request }: LoaderFunctionArgs) {
       });
       return res;
     });
+
+    // ... after mapping the resources ...
+    const activeResources = resources.filter((r: any) => r.status === 'Active');
+    return json({ success: true, resources: activeResources });
 
     return json({ success: true, resources });
 
