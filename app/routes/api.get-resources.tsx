@@ -29,9 +29,14 @@ export async function loader({ request }: LoaderFunctionArgs) {
     `);
 
     const data = await response.json();
+    
+    if (data.errors) {
+      console.error("GraphQL Errors:", data.errors);
+      return json({ success: false, error: "GraphQL Query Failed" }, { status: 500 });
+    }
+
     const rawNodes = data.data?.metaobjects?.nodes || [];
 
-    // Parse the raw GraphQL nodes into a clean JSON array for the frontend
     const resources = rawNodes.map((node: any) => {
       const res: any = { id: node.id };
       
