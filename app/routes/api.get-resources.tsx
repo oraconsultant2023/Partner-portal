@@ -40,7 +40,13 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
     // Return ALL resources. 
     // We will handle filtering in the Partner Dashboard JS later.
-    return json({ success: true, resources });
+    // Return ALL resources. 
+    const activeResources = resources.filter((r: any) => r.status === 'Active');
+
+    return json(
+      { success: true, resources: activeResources }, 
+      { headers: { "Cache-Control": "no-store" } } 
+    );
 
   } catch (error: any) {
     return json({ success: false, error: error.message }, { status: 500 });
