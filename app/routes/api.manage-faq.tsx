@@ -13,37 +13,32 @@ export async function action({ request }: ActionFunctionArgs) {
 
     const body = await request.json();
 
-    const response = await admin.graphql(
-      `
+    const response = await admin.graphql(`
       mutation CreateFaq($metaobject: MetaobjectCreateInput!) {
         metaobjectCreate(metaobject: $metaobject) {
           metaobject { id }
           userErrors { field message }
         }
       }
-      `,
-      {
-        variables: {
-          metaobject: {
-            type: "partner_faq",
-            fields: [
-              { key: "question", value: body.question },
-              { key: "answer", value: body.answer },
-              { key: "category", value: body.category }, // Map the new field
-            ],
-          },
+    `, {
+      variables: {
+        metaobject: {
+          type: "partner_faq",
+          fields: [
+            { key: "question", value: body.question },
+            { key: "answer", value: body.answer },
+            { key: "category", value: body.category } // Added this
+          ],
         },
-      }
-    );
+      },
+    });
 
     const data: any = await response.json();
     const errors = data?.data?.metaobjectCreate?.userErrors;
 
-    if (errors?.length) {
-      return json({ success: false, error: errors[0].message }, { status: 422 });
-    }
-
+    if (errors?.length) return json({ success: false, error: errors[0].message });
     return json({ success: true });
+
   } catch (error: any) {
     return json({ success: false, error: error.message }, { status: 500 });
   }
