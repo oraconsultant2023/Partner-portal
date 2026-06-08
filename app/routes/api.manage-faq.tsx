@@ -6,7 +6,6 @@ import {
 import { authenticate } from "../shopify.server";
 
 
-
 export async function action({ request }: ActionFunctionArgs) {
   try {
     const { admin } = await authenticate.public.appProxy(request);
