@@ -4,6 +4,9 @@ import {
   type LoaderFunctionArgs,
 } from "@remix-run/node";
 import { authenticate } from "../shopify.server";
+
+
+
 export async function action({ request }: ActionFunctionArgs) {
   try {
     const { admin } = await authenticate.public.appProxy(request);
@@ -27,7 +30,7 @@ export async function action({ request }: ActionFunctionArgs) {
             fields: [
               { key: "question", value: body.question },
               { key: "answer", value: body.answer },
-              { key: "category", value: body.category }, // Add this line
+              { key: "category", value: body.category }, // Map the new field
             ],
           },
         },
@@ -38,13 +41,11 @@ export async function action({ request }: ActionFunctionArgs) {
     const errors = data?.data?.metaobjectCreate?.userErrors;
 
     if (errors?.length) {
-      // This will now pass a JSON error back to the frontend
       return json({ success: false, error: errors[0].message }, { status: 422 });
     }
 
     return json({ success: true });
   } catch (error: any) {
-    console.error("FAQ ACTION ERROR:", error);
     return json({ success: false, error: error.message }, { status: 500 });
   }
 }
