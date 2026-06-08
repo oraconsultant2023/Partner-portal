@@ -15,12 +15,8 @@ export async function loader({ request }: LoaderFunctionArgs) {
               key
               value
               reference {
-                ... on MediaImage {
-                  image { url }
-                }
-                ... on GenericFile {
-                  url
-                }
+                ... on MediaImage { image { url } }
+                ... on GenericFile { url }
               }
             }
           }
@@ -28,40 +24,25 @@ export async function loader({ request }: LoaderFunctionArgs) {
       }
     `);
 
-    // FIX: Cast as 'any' to clear the TypeScript errors for data.errors
     const data: any = await response.json();
-
-    
-    if (data.errors) {
-      console.error("GraphQL Errors:", data.errors);
-      return json({ success: false, error: "GraphQL Query Failed" }, { status: 500 });
-    }
+    if (data.errors) return json({ success: false, error: "GraphQL Query Failed" }, { status: 500 });
 
     const rawNodes = data.data?.metaobjects?.nodes || [];
-
     const resources = rawNodes.map((node: any) => {
       const res: any = { id: node.id };
-      
       node.fields.forEach((field: any) => {
-        if (field.key === 'thumbnail') {
-          res.thumbnailUrl = field.reference?.image?.url || null;
-        } else if (field.key === 'file') {
-          res.fileUrl = field.reference?.url || null;
-        } else {
-          res[field.key] = field.value;
-        }
+        if (field.key === 'thumbnail') res.thumbnailUrl = field.reference?.image?.url || null;
+        else if (field.key === 'file') res.fileUrl = field.reference?.url || null;
+        else res[field.key] = field.value;
       });
       return res;
     });
 
-    // ... after mapping the resources ...
-    const activeResources = resources.filter((r: any) => r.status === 'Active');
-    return json({ success: true, resources: activeResources });
-
+    // Return ALL resources. 
+    // We will handle filtering in the Partner Dashboard JS later.
     return json({ success: true, resources });
 
   } catch (error: any) {
-    console.error("GET RESOURCES ERROR:", error);
     return json({ success: false, error: error.message }, { status: 500 });
   }
 }
