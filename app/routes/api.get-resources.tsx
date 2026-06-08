@@ -38,17 +38,13 @@ export async function loader({ request }: LoaderFunctionArgs) {
       return res;
     });
 
-    // Return ALL resources. 
-    // We will handle filtering in the Partner Dashboard JS later.
-    // Return ALL resources. 
-    const activeResources = resources.filter((r: any) => r.status === 'Active');
-
-    return json(
-      { success: true, resources: activeResources }, 
-      { headers: { "Cache-Control": "no-store" } } 
-    );
+    // REMOVE the filter logic that was here.
+    // Return all resources so the Admin Dashboard can manage them all.
+    return json({ success: true, resources }, { headers: { "Cache-Control": "no-store" } });
 
   } catch (error: any) {
+    console.error("GET RESOURCES ERROR:", error);
     return json({ success: false, error: error.message }, { status: 500 });
   }
+
 }
