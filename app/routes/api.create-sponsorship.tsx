@@ -109,6 +109,12 @@ export async function action({ request }: ActionFunctionArgs) {
       variables: {
         metaobject: {
           type: "sponsorship_slot",
+          // ADD THIS BLOCK TO FORCE "ACTIVE" STATUS
+          capabilities: {
+            publishable: {
+              status: "ACTIVE"
+            }
+          },
           fields: metaobjectFields
         }
       }
