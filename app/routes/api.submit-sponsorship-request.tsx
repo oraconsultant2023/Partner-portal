@@ -1,10 +1,14 @@
 import { json } from "@remix-run/node";
 import { authenticate } from "../shopify.server";
 
-export async function action({ request }) {
-  // 1. Authenticate the request
- const { session } = await authenticate.public.appProxy(request);
+export async function action({ request }: { request: Request }) {
+  // 1. Authenticate the request and get the session
+  const { session, admin } = await authenticate.public.appProxy(request);
   
+  // Note: authenticate.public.appProxy(request) returns the admin client 
+  // if your shopify.server.ts is configured correctly. 
+  // If 'admin' is still undefined, you may need to initialize it manually.
+
   // 2. Parse the JSON from the frontend
   const data = await request.json();
 
@@ -23,8 +27,7 @@ export async function action({ request }) {
     }
   `;
 
-  // 4. Map payload to your Metaobject Field Keys
-  // Ensure these "key" values match exactly what is in your Shopify Admin
+  // 4. Map payload
   const input = {
     type: "sponsorship_request",
     fields: [
@@ -42,10 +45,14 @@ export async function action({ request }) {
   };
 
   try {
+    // 5. Use the admin client to execute the mutation
+    if (!admin) {
+      return json({ success: false, error: "Admin client not available" });
+    }
+    
     const response = await admin.graphql(mutation, { variables: { input } });
     const result = await response.json();
 
-    // 5. Handle Errors
     if (result.data?.metaobjectCreate?.userErrors?.length > 0) {
       return json({ 
         success: false, 
@@ -55,6 +62,7 @@ export async function action({ request }) {
 
     return json({ success: true });
   } catch (err) {
-    return json({ success: false, error: err.message });
+    const errorMessage = err instanceof Error ? err.message : "Unknown error";
+    return json({ success: false, error: errorMessage });
   }
 }
