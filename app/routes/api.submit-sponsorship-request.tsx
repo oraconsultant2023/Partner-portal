@@ -30,14 +30,18 @@ export async function action({ request }: { request: Request }) {
   // 4. Map payload
   const input = {
     type: "sponsorship_request",
-    // Inside your fields array:
+    capabilities: {
+      publishable: {
+        status: "ACTIVE",
+      },
+    },
     fields: [
       { key: "slot_id", value: data.slot_id },
       { key: "slot_title", value: data.slot_title },
       // ... other fields
       { key: "slot_rate", value: data.slot_rate },
       { key: "slot_placement", value: data.slot_placement },
-      { key: "slot_thumbnail", value: data.slot_thumbnail }, // ADD THIS LINE
+      { key: "slot_thumbnail", value: data.slot_thumbnail },
       { key: "slot_start", value: data.slot_start },
       { key: "slot_end", value: data.slot_end },
       { key: "message", value: data.message },
