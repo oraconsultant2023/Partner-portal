@@ -1,66 +1,46 @@
-import { json, type ActionFunctionArgs } from "@remix-run/node";
+import { json } from "@remix-run/node";
 import { authenticate } from "../shopify.server";
 
-export async function action({ request }: ActionFunctionArgs) {
-  const { admin } = await authenticate.public.appProxy(request);
-  if (!admin) return json({ error: "Unauthorized" }, { status: 401 });
+export async function action({ request }) {
+  const { admin } = await authenticate.admin(request);
+  const data = await request.json();
 
-  if (request.method !== "POST")
-    return json({ error: "Method not allowed" }, { status: 405 });
-
-  try {
-    const body = await request.json();
-    const { slotId, slotTitle, partnerName, partnerEmail, message } = body;
-
-    // Inside your action function, update the 'fields' array to include these new keys:
-    // Inside your action function:
-const fields = [
-  { key: "slot_id", value: body.slotId },
-  { key: "slot_title", value: body.slotTitle },
-  { key: "partner_name", value: body.partnerName },
-  { key: "partner_email", value: body.partnerEmail },
-  { key: "status", value: "Pending" },
-  { key: "message", value: body.message },
-  // Map the new fields
-  { key: "slot_rate", value: body.slotRate },
-  { key: "slot_placement", value: body.slotPlacement },
-  { key: "slot_start", value: body.slotStart },
-  { key: "slot_end", value: body.slotEnd },
-  { key: "slot_thumbnail", value: body.slotThumbnail }
-];
-
-
-    const metaobjectRes = await admin.graphql(
-      `mutation CreateSponsorshipRequest($metaobject: MetaobjectCreateInput!) {
-        metaobjectCreate(metaobject: $metaobject) {
-          metaobject { id }
-          userErrors { field message }
+  const mutation = `
+    mutation createSponsorshipRequest($input: MetaobjectCreateInput!) {
+      metaobjectCreate(metaobject: $input) {
+        metaobject {
+          id
         }
-      }`,
-      {
-        variables: {
-          metaobject: {
-            type: "sponsorship_request",
-            capabilities: { publishable: { status: "ACTIVE" } },
-            fields: fields,
-          },
-        },
-      },
-    );
-
-    const metaobjectData = await metaobjectRes.json();
-    const errors = metaobjectData.data?.metaobjectCreate?.userErrors || [];
-
-    if (errors.length > 0) {
-      return json(
-        { success: false, error: errors[0].message },
-        { status: 400 },
-      );
+        userErrors {
+          field
+          message
+        }
+      }
     }
+  `;
 
-    return json({ success: true, message: "Request created!" });
-  } catch (error: any) {
-    console.error("SUBMIT REQUEST ERROR:", error);
-    return json({ success: false, error: error.message }, { status: 500 });
+  const input = {
+    type: "sponsorship_request",
+    fields: [
+      { key: "slot_id", value: data.slot_id },
+      { key: "slot_title", value: data.slot_title },
+      { key: "slot_rate", value: data.slot_rate },
+      { key: "slot_placement", value: data.slot_placement },
+      { key: "slot_start", value: data.slot_start },
+      { key: "slot_end", value: data.slot_end },
+      { key: "message", value: data.message },
+      { key: "partner_name", value: data.partner_name },
+      { key: "partner_email", value: data.partner_email },
+      { key: "status", value: "Pending" }
+    ]
+  };
+
+  const response = await admin.graphql(mutation, { variables: { input } });
+  const result = await response.json();
+
+  if (result.data.metaobjectCreate.userErrors.length > 0) {
+    return json({ success: false, error: result.data.metaobjectCreate.userErrors[0].message });
   }
+
+  return json({ success: true });
 }
