@@ -4,9 +4,9 @@ import { authenticate } from "../shopify.server";
 export async function action({ request }: { request: Request }) {
   // 1. Authenticate the request and get the session
   const { session, admin } = await authenticate.public.appProxy(request);
-  
-  // Note: authenticate.public.appProxy(request) returns the admin client 
-  // if your shopify.server.ts is configured correctly. 
+
+  // Note: authenticate.public.appProxy(request) returns the admin client
+  // if your shopify.server.ts is configured correctly.
   // If 'admin' is still undefined, you may need to initialize it manually.
 
   // 2. Parse the JSON from the frontend
@@ -30,18 +30,21 @@ export async function action({ request }: { request: Request }) {
   // 4. Map payload
   const input = {
     type: "sponsorship_request",
+    // Inside your fields array:
     fields: [
       { key: "slot_id", value: data.slot_id },
       { key: "slot_title", value: data.slot_title },
-      { key: "partner_name", value: data.partner_name },
-      { key: "partner_email", value: data.partner_email },
-      { key: "message", value: data.message },
-      { key: "status", value: data.status },
+      // ... other fields
       { key: "slot_rate", value: data.slot_rate },
       { key: "slot_placement", value: data.slot_placement },
+      { key: "slot_thumbnail", value: data.slot_thumbnail }, // ADD THIS LINE
       { key: "slot_start", value: data.slot_start },
-      { key: "slot_end", value: data.slot_end }
-    ]
+      { key: "slot_end", value: data.slot_end },
+      { key: "message", value: data.message },
+      { key: "partner_name", value: data.partner_name },
+      { key: "partner_email", value: data.partner_email },
+      { key: "status", value: data.status },
+    ],
   };
 
   try {
@@ -49,14 +52,14 @@ export async function action({ request }: { request: Request }) {
     if (!admin) {
       return json({ success: false, error: "Admin client not available" });
     }
-    
+
     const response = await admin.graphql(mutation, { variables: { input } });
     const result = await response.json();
 
     if (result.data?.metaobjectCreate?.userErrors?.length > 0) {
-      return json({ 
-        success: false, 
-        error: result.data.metaobjectCreate.userErrors[0].message 
+      return json({
+        success: false,
+        error: result.data.metaobjectCreate.userErrors[0].message,
       });
     }
 
