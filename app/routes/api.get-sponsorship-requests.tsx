@@ -1,46 +1,46 @@
-import { json, type LoaderFunctionArgs } from "@remix-run/node";
+import { json } from "@remix-run/node";
 import { authenticate } from "../shopify.server";
 
-export async function loader({ request }: LoaderFunctionArgs) {
-  const { admin } = await authenticate.public.appProxy(request);
-  if (!admin) return json({ error: "Unauthorized" }, { status: 401 });
+export async function action({ request }) {
+  const { admin } = await authenticate.admin(request);
+  const data = await request.json();
 
-  try {
-    const response = await admin.graphql(`
-      query GetSponsorshipRequests {
-        metaobjects(type: "sponsorship_request", first: 50, reverse: true) {
-          edges {
-            node {
-              id
-              handle
-              fields {
-                key
-                value
-              }
-            }
-          }
+  const mutation = `
+    mutation createSponsorshipRequest($input: MetaobjectCreateInput!) {
+      metaobjectCreate(metaobject: $input) {
+        metaobject {
+          id
+        }
+        userErrors {
+          field
+          message
         }
       }
-    `);
+    }
+  `;
 
-    const data = await response.json();
-    
-    // Format the deeply nested GraphQL data into a clean, flat array of objects
-    const requests = data.data.metaobjects.edges.map((edge: any) => {
-      const fields = edge.node.fields.reduce((acc: any, field: any) => {
-        acc[field.key] = field.value;
-        return acc;
-      }, {});
+  const input = {
+    type: "sponsorship_request",
+    fields: [
+      { key: "slot_id", value: data.slot_id },
+      { key: "slot_title", value: data.slot_title },
+      { key: "slot_rate", value: data.slot_rate },
+      { key: "slot_placement", value: data.slot_placement },
+      { key: "slot_start", value: data.slot_start },
+      { key: "slot_end", value: data.slot_end },
+      { key: "message", value: data.message },
+      { key: "partner_name", value: data.partner_name },
+      { key: "partner_email", value: data.partner_email },
+      { key: "status", value: "Pending" }
+    ]
+  };
 
-      return {
-        id: edge.node.id,
-        ...fields
-      };
-    });
+  const response = await admin.graphql(mutation, { variables: { input } });
+  const result = await response.json();
 
-    return json({ success: true, requests });
-  } catch (error: any) {
-    console.error("GET SPONSORSHIP REQUESTS ERROR:", error);
-    return json({ success: false, error: error.message }, { status: 500 });
+  if (result.data.metaobjectCreate.userErrors.length > 0) {
+    return json({ success: false, error: result.data.metaobjectCreate.userErrors[0].message });
   }
+
+  return json({ success: true });
 }
