@@ -3,7 +3,7 @@ import { authenticate } from "../shopify.server";
 
 export async function action({ request }) {
   // 1. Authenticate the request
-  const { admin } = await authenticate.admin(request);
+ const { session } = await authenticate.public.appProxy(request);
   
   // 2. Parse the JSON from the frontend
   const data = await request.json();
