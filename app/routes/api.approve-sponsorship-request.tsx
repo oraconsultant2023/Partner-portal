@@ -8,16 +8,15 @@ export async function action({ request }: ActionFunctionArgs) {
   if (request.method !== "POST") return json({ error: "Method not allowed" }, { status: 405 });
 
   try {
-    const { requestId, slotId } = await request.json();
+    const { requestId } = await request.json();
 
-    // FIXED: Helper function to ensure Shopify's strict GID format
+    // Helper function to ensure Shopify's strict GID format
     const formatGid = (id: string) => {
       if (!id) return id;
       return id.includes("gid://") ? id : `gid://shopify/Metaobject/${id}`;
     };
 
     const safeRequestId = formatGid(requestId);
-    const safeSlotId = formatGid(slotId);
 
     // 1. Update the Request Status to "Approved"
     const updateRequestRes = await admin.graphql(
@@ -38,30 +37,12 @@ export async function action({ request }: ActionFunctionArgs) {
     const requestErrors = requestUpdateData.data?.metaobjectUpdate?.userErrors || [];
     if (requestErrors.length > 0) throw new Error("Request Update Error: " + requestErrors[0].message);
 
-    // 2. Update the Slot Inventory Status to "Booked"
-    if (safeSlotId) {
-      const updateSlotRes = await admin.graphql(
-        `mutation UpdateSlot($id: ID!, $metaobject: MetaobjectUpdateInput!) {
-          metaobjectUpdate(id: $id, metaobject: $metaobject) {
-            userErrors { field message }
-          }
-        }`,
-        {
-          variables: {
-            id: safeSlotId,
-            metaobject: { fields: [{ key: "inventory_status", value: JSON.stringify(["Booked"]) }] }
-          }
-        }
-      );
-      
-      const slotUpdateData = await updateSlotRes.json();
-      const slotErrors = slotUpdateData.data?.metaobjectUpdate?.userErrors || [];
-      if (slotErrors.length > 0) throw new Error("Slot Update Error: " + slotErrors[0].message);
-    }
+    // Note: The auto-booking logic for the Slot Inventory Status has been removed.
+    // The slot will remain fully available until manually changed by the admin.
 
-    return json({ success: true, message: "Approved and slot booked successfully" });
+    return json({ success: true, message: "Request approved successfully." });
   } catch (error: any) {
-    console.error("APPROVE REQUEST ERROR:", error);
+    console.error("Approve Request Error:", error);
     return json({ success: false, error: error.message }, { status: 500 });
   }
 }
