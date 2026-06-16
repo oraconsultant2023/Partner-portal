@@ -1,16 +1,20 @@
-import { json, type ActionFunctionArgs } from "@remix-run/node";
+import { json, type LoaderFunctionArgs } from "@remix-run/node";
 import { authenticate } from "../shopify.server";
 
-export async function action({ request }: ActionFunctionArgs) {
-  if (request.method !== "POST") {
-    return json({ success: false, error: "Method not allowed" }, { status: 405 });
-  }
-
+export async function loader({ request }: LoaderFunctionArgs) {
   const { admin } = await authenticate.public.appProxy(request);
   if (!admin) return json({ success: false, error: "Unauthorized access" }, { status: 401 });
 
   try {
-    const data = await request.json();
+    // 1. Extract the data from the URL search params instead of the body
+    const url = new URL(request.url);
+    const dataString = url.searchParams.get("data");
+    
+    if (!dataString) {
+      return json({ success: false, error: "Missing payload data." }, { status: 400 });
+    }
+    
+    const data = JSON.parse(dataString);
 
     if (!data.id) {
       return json({ success: false, error: "Application ID is missing." }, { status: 400 });
@@ -25,7 +29,7 @@ export async function action({ request }: ActionFunctionArgs) {
       }
     `;
 
-    // Make sure data.id is a full Shopify GID
+    // Ensure it's a valid Shopify GID
     const formattedId = data.id.includes('gid://') ? data.id : `gid://shopify/Metaobject/${data.id}`;
 
     const variables = {
