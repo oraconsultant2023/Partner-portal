@@ -34,8 +34,8 @@ export async function action({ request }: ActionFunctionArgs) {
       id: formattedId,
       metaobject: {
         fields: [
-          // Passing 'null' clears the file reference from the metaobject
-          { key: "invoice_pdf", value: null } 
+          // Passing an empty string clears the file reference in Shopify
+          { key: "invoice_pdf", value: "" } 
         ]
       }
     };
