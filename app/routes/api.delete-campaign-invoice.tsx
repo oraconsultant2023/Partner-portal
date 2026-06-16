@@ -1,22 +1,19 @@
-import { json, type ActionFunctionArgs } from "@remix-run/node";
+import { json, type LoaderFunctionArgs } from "@remix-run/node";
 import { authenticate } from "../shopify.server";
 
-export async function action({ request }: ActionFunctionArgs) {
-  if (request.method !== "POST") {
-    return json({ success: false, error: "Method not allowed" }, { status: 405 });
-  }
-
+export async function loader({ request }: LoaderFunctionArgs) {
   const { admin } = await authenticate.public.appProxy(request);
   if (!admin) return json({ success: false, error: "Unauthorized access" }, { status: 401 });
 
   try {
-    const data = await request.json();
+    // Extract the campaign ID from the URL parameters instead of the body
+    const url = new URL(request.url);
+    const campaignId = url.searchParams.get("campaignId");
 
-    if (!data.campaignId) {
+    if (!campaignId) {
       return json({ success: false, error: "Campaign ID is missing." }, { status: 400 });
     }
 
-    // This mutation deletes the ENTIRE metaobject entry
     const mutation = `
       mutation DeleteCampaign($id: ID!) {
         metaobjectDelete(id: $id) {
@@ -26,9 +23,9 @@ export async function action({ request }: ActionFunctionArgs) {
       }
     `;
 
-    const formattedId = data.campaignId.includes('gid://') 
-      ? data.campaignId 
-      : `gid://shopify/Metaobject/${data.campaignId}`;
+    const formattedId = campaignId.includes('gid://') 
+      ? campaignId 
+      : `gid://shopify/Metaobject/${campaignId}`;
 
     const response = await admin.graphql(mutation, { 
       variables: { id: formattedId } 
