@@ -6,28 +6,20 @@ export async function loader({ request }: LoaderFunctionArgs) {
   if (!admin) return json({ success: false, error: "Unauthorized access" }, { status: 401 });
 
   try {
-    // 1. Fetch Applications (to count total and approved)
+    // 1. Fetch Applications
     const appsResponse = await admin.graphql(`
       query {
         metaobjects(type: "brand_application", first: 250) {
-          edges {
-            node {
-              fields { key value }
-            }
-          }
+          edges { node { fields { key value } } }
         }
       }
     `);
     
-    // 2. Fetch Sponsorship Requests (to sum revenue for approved requests)
+    // 2. Fetch Sponsorship Requests
     const sponsorshipsResponse = await admin.graphql(`
       query {
         metaobjects(type: "sponsorship_request", first: 250) {
-          edges {
-            node {
-              fields { key value }
-            }
-          }
+          edges { node { fields { key value } } }
         }
       }
     `);
@@ -49,25 +41,35 @@ export async function loader({ request }: LoaderFunctionArgs) {
       }).length;
     }
 
-    // Process Sponsorship Revenue
-    let sponsorshipRevenue = 0;
+    // Process Sponsorship Pipeline
+    let totalRequests = 0;
+    let expectedRevenue = 0;
+    let approvedRequests = 0;
+    let approvedRevenue = 0;
 
     if (sponsorshipsData.data?.metaobjects?.edges) {
-      sponsorshipsData.data.metaobjects.edges.forEach((edge: any) => {
+      const edges = sponsorshipsData.data.metaobjects.edges;
+      totalRequests = edges.length;
+
+      edges.forEach((edge: any) => {
         const fields = edge.node.fields;
         const statusField = fields.find((f: any) => f.key === "status");
+        const rateField = fields.find((f: any) => f.key === "slot_rate");
         
-        // Only count revenue for Approved requests
+        // Extract numeric value from rate (e.g. "$1,200" -> 1200)
+        let rateValue = 0;
+        if (rateField && rateField.value) {
+          const cleanRate = rateField.value.replace(/[^0-9.]/g, '');
+          rateValue = parseFloat(cleanRate) || 0;
+        }
+
+        // Add to Expected Revenue regardless of status
+        expectedRevenue += rateValue;
+
+        // If approved, add to Approved counts
         if (statusField && statusField.value === "Approved") {
-          const rateField = fields.find((f: any) => f.key === "slot_rate");
-          if (rateField && rateField.value) {
-            // Remove any non-numeric characters (like '$' or commas) and parse to float
-            const cleanRate = rateField.value.replace(/[^0-9.]/g, '');
-            const rateValue = parseFloat(cleanRate);
-            if (!isNaN(rateValue)) {
-              sponsorshipRevenue += rateValue;
-            }
-          }
+          approvedRequests++;
+          approvedRevenue += rateValue;
         }
       });
     }
@@ -76,7 +78,10 @@ export async function loader({ request }: LoaderFunctionArgs) {
       success: true,
       totalApplications,
       approvedApplications,
-      sponsorshipRevenue
+      totalRequests,
+      expectedRevenue,
+      approvedRequests,
+      approvedRevenue
     });
 
   } catch (error: any) {
